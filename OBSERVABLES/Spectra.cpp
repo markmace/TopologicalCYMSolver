@@ -174,6 +174,9 @@ namespace Observables {
             
             COMPLEX cDpx,cDpy,cDpz; DOUBLE pXValue,pYValue,pZValue; DOUBLE pAbs; DOUBLE ModeOccupancy;
             
+            // OUTPUT VALUES //
+            DOUBLE mDSqr=0.0; DOUBLE NTot=0.0;
+            
             // COMPUTE OCCUPATION NUMBER FOR ALL MOMENTUM MODES //
             for(INT pZIndex=0;pZIndex<=U->N[2]-1;pZIndex++){
                 for(INT pYIndex=0;pYIndex<=U->N[1]-1;pYIndex++){
@@ -191,6 +194,10 @@ namespace Observables {
                         
                         GluonSpectrum->Count(pAbs,ModeOccupancy);
                         
+                        if(pXIndex>0 || pYIndex>0 || pZIndex>0){
+                            mDSqr+=4.0*Nc*ModeOccupancy/pAbs; NTot+=ModeOccupancy;
+                        }
+                        
                     }
                     
                     
@@ -198,11 +205,17 @@ namespace Observables {
                 
             }
             
+            // RE-NORMALIZE //
+            mDSqr/=(U->N[0]*U->N[1]*U->N[2]);   NTot/=(U->N[0]*U->N[1]*U->N[2]);
+
+            
             // OUTPUT FILE //
             std::string OutputFile=StringManipulation::StringCast(IO::OutputDirectory,fname,"ID",RandomNumberGenerator::MySEED,".txt");
 
+            std::string HeaderMessage=StringManipulation::StringCast("#mDSqr=",mDSqr," NTot=",NTot);
+            
             // CREATE OUPUT //
-            GluonSpectrum->Output(OutputFile);
+            GluonSpectrum->Output(HeaderMessage,OutputFile);
             
             // CLEAN-UP //
             delete GluonSpectrum;

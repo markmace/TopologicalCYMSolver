@@ -2,10 +2,10 @@
 #include "Definitions.cpp"
 
 //SET GAUGE GROUP
-#define SU_Nc_FLAG SU2_FLAG
+#define SU_Nc_FLAG SU3_FLAG
 
 //INCLUDE SIMULATION PROCEDURE
-#include "SphaleronSimulation.cpp" // FOR RUNS
+#include "SphaleronSimulationSU3.cpp" // FOR RUNS
 
 // INCLUDE MPI SAMPLING //
 #include "MPI/Basic.cpp"
@@ -89,7 +89,7 @@ int main(int argc,char **argv){
     
         // FOR LOADING FILES
         INT InputFileTime=0;
-        INT InputFileID=1457991876;
+        INT InputFileID=1454616320;
     
         arguments.Getval("iT",InputFileTime);
         arguments.Getval("iID",InputFileID);

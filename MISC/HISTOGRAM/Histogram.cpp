@@ -38,22 +38,33 @@ class Histogram{
         
         if(pos>=0 && pos<NBins){
             
+            #pragma omp atomic
             xValues[pos]+=x;
+            
+            #pragma omp atomic
             yValues[pos]+=y;
             
+            #pragma omp atomic
             Counts[pos]++;
+            
+            #pragma omp atomic
             TotalCounts++;
         }
         
         else{
+            
+            #pragma omp atomic
             OutOfRange++;
         }
     }
     
-    void Output(std::string fname){
+    void Output(std::string HeaderMessage,std::string fname){
         
         std::ofstream OutStream;
         OutStream.open(fname.c_str());
+        
+        
+        OutStream << HeaderMessage << std::endl;
         
         OutStream << "#xLow=" << xLow << " xHigh=" << xHigh << " DeltaX=" << DeltaX << " NBins=" << NBins << std::endl;
         OutStream << "#TOTALCOUNTS=" << TotalCounts << " UNCOUNTED=" << OutOfRange << std::endl;
@@ -69,6 +80,24 @@ class Histogram{
         }
         
         OutStream.close();
+        
+    }
+    
+    void CommandlineOutput(){
+        
+        std::cout << "#xLow=" << xLow << " xHigh=" << xHigh << " DeltaX=" << DeltaX << " NBins=" << NBins << std::endl;
+        std::cout << "#TOTALCOUNTS=" << TotalCounts << " UNCOUNTED=" << OutOfRange << std::endl;
+        
+        for(INT i=0;i<NBins;i++){
+            
+            if(Counts[i]>0){
+                
+                std::cout << xValues[i]/Counts[i] << " " << yValues[i]/Counts[i] << " " << Counts[i]/DOUBLE(TotalCounts+OutOfRange) << std::endl;
+                
+            }
+            
+        }
+        
         
     }
     

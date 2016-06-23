@@ -23,10 +23,10 @@ namespace Observables {
             {
                 
                 //ALLOCATE BUFFERS
-                SET_ADJOINT_BUFFERS();
+                SET_GAUSS_LAW_BUFFERS();
                 
                 //LOCAL VIOLATION
-                DOUBLE LocalViolation;                
+                DOUBLE LocalViolation[SUNcAlgebra::VectorSize];
                 
                 //COMPUTE LOCAL VIOLATION AT EACH POINT
                 #pragma omp for reduction( + : SqrSumViolation) reduction( max : MaxViolation)
@@ -34,21 +34,17 @@ namespace Observables {
                     for(INT y=yLow;y<=yHigh;y++){
                         for(INT x=xLow;x<=xHigh;x++){
                             
-                            //GET LOCAL VIOLATION
-                            COMPUTE_NEIGHBORING_ADJOINTS(x,y,z);
+                            // GET LOCAL VIOLATION //
+                            COMPUTE_GAUSS_VIOLATION(LocalViolation,x,y,z);
                             
                             //COMPUTE VIOLATION FOR EACH COLOR COMPONENT
                             for(int a=0;a<SUNcAlgebra::VectorSize;a++){
                                 
-                                //COMPUTE LOCAL VIOLATION
-                                COMPUTE_GAUSS_VIOLATION(LocalViolation,x,y,z,a);
-                                
-                                
                                 //UPDATE MAXIMUM
-                                MaxViolation=std::max(MaxViolation,LocalViolation);
+                                MaxViolation=std::max(MaxViolation,LocalViolation[a]);
                                 
                                 //UPDATE SQR SUM
-                                SqrSumViolation+=SQR(LocalViolation);
+                                SqrSumViolation+=SQR(LocalViolation[a]);
                                 
                             }
                             

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <limits>
+#include <vector>
 
 //DEFINITIONS OF DATATYPES
 typedef int INT;
@@ -63,10 +64,7 @@ using std::atan2;
 //COMPILER FLAGS INITIAL CONDITIONS
 #define THERMAL_FLAG 19
 #define QP_FLAG 91
-
-//COMPILER FLAGS FOR YES AND NO
-#define YES_FLAG 666
-#define NO_FLAG 777
+#define LOAD_FLAG 666
 
 // MPI //
 #include <mpi.h>

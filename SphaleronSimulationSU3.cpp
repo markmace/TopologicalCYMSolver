@@ -1,6 +1,6 @@
 //SPHALERON TRANSITION RATE SIMULATION
 #define METRIC_FLAG MINKOWSKI_FLAG
-#define IC_FLAG LOAD_FLAG
+#define IC_FLAG QP_FLAG
 
 #include <iostream>
 #include <string>
@@ -162,8 +162,6 @@ DOUBLE n0=1.0;
 ////////////////////////////////////////
 
 #include "TOPOLOGY/CoolingMethod.cpp"
-#include "TOPOLOGY/WindingNumber.cpp"
-#include "TOPOLOGY/SlaveFieldMethod.cpp"
 #include "TOPOLOGY/IntegralEstimateMethod.cpp"
 
 ///////////////////////
@@ -192,15 +190,11 @@ DOUBLE n0=1.0;
     #include "IO/LoadConfiguration.cpp"
 #endif
 
-//INCLUDE MAP OF E.B
-#include "OBSERVABLES/EdotBMap.cpp"
-
 //////////
 //TESTS //
 //////////
 
 #include "MISC/GaugeInvarianceTest.cpp"
-
 
 ///////////////////////////
 // SIMULATION PROCEDURE  //
@@ -217,7 +211,6 @@ namespace Simulation {
     /////////////////////////////
     
     INT CoolingFrequency,GaugeFixingFrequency,GaugeFixingTotalSteps,ConfigSaveFrequency,CalibFrequency;
-    INT NumberOfQuenchSteps;
     
     void Init(){
         
@@ -227,18 +220,17 @@ namespace Simulation {
         
         
         // SET COOLING FREQUENCY //
-        CoolingFrequency=10;/*20;*/ ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps=128;//128;//96;
-        CalibFrequency=CoolingFrequency*200; ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps=128;//2336;
+        CoolingFrequency=10;/*20;*/ ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps=8;//128;//96;
+        CalibFrequency=CoolingFrequency*200; ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps=1744;//2336;
         
         
         // SET BLOCKING PARAMETERS //
         Cooling::BlockFrequency=8;//8;//16;
-        ChernSimonsNumber::CoolingMethod::StandardBlockingLevel=0;
-        ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel=2;
-
         
-        // SLAVE FIELD METHOD //
-        NumberOfQuenchSteps=2;
+        ChernSimonsNumber::CoolingMethod::StandardBlockingLevel=0;
+
+        ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel=2;
+        
         
         // CONSISTENCY CHECK FOR BLOCKING //
         if((ChernSimonsNumber::CoolingMethod::StandardBlockingLevel*Cooling::BlockFrequency>ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps) || (Cooling::BlockFrequency*ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel>ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps)){
@@ -252,7 +244,7 @@ namespace Simulation {
         GaugeFixingFrequency=INT(100.0/(Qs*Dynamics::dTau)); GaugeFixingTotalSteps=5000;
         
         // SAVE CONFIGURATIONS
-        ConfigSaveFrequency=INT(1.0/(Qs*Dynamics::dTau));
+        ConfigSaveFrequency=INT(200.0/(Qs*Dynamics::dTau));
         
         /////////////////////
         // INITIALIZATIONS //
@@ -270,17 +262,8 @@ namespace Simulation {
         //INITIALIZE FOURIER SPACE
         FourierSpace::Init();
         
-        //INITIALIZE SLAVE FIELD METHOD
-        ChernSimonsNumber::SlaveFieldMethod::Init();
-        
         //INITIALIZE COOLING METHOD //
         ChernSimonsNumber::CoolingMethod::Init();
-        
-        // INITIALIZE WINDING NUMBER MEASUREMENT //
-        WindingNumber::Init();
-        
-        // INITIALIZE SLAVE FIELD DYNAMICS
-        ChernSimonsNumber::SlaveFieldMethod::Init();
         
         // INITIALIZE SLAVE FIELD DYNAMICS
         ScaleObservables::SpatialWilsonLoop::Init();
@@ -327,13 +310,6 @@ namespace Simulation {
  << std::endl;
         OutStream << "#CalibBlockingLevel= " << ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel << std::endl;
         OutStream << std::endl;
-        
-        OutStream << "#SLAVE FIELD PARAMETERS" << std::endl;
-        OutStream << "#MaxDeviationLimit= " << ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::MaxDeviationLimit << std::endl;
-        OutStream << "#StressTolerance= " << ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::StressTolerance << std::endl;
-        OutStream << "#TransformationCounterLimit= " << ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::TransformationCounterLimit << std::endl;
-        OutStream << "#NumberOfQuenchSteps= " << NumberOfQuenchSteps << std::endl;
-        OutStream << std::endl;
 
         OutStream << "#GAUGE FIXING PARAMETERS" << std::endl;
         OutStream << "#GaugeFixingFrequency = " << GaugeFixingFrequency << std::endl;
@@ -370,7 +346,7 @@ namespace Simulation {
         ///////////////////////////////
         
         // OPTION TO SAVE INITIAL CONFIGURATION //
-        IO::SaveConfiguration(StringManipulation::StringCast("UOutT",Dynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",Dynamics::Time()).c_str());
+        //IO::SaveConfiguration(StringManipulation::StringCast("UOutT",Dynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",Dynamics::Time()).c_str());
         // END OPTION //
         
         // MEASURE BULK OBSERVABLES //
@@ -393,14 +369,7 @@ namespace Simulation {
         //////////////////////////////////////
         // INITIALIZE TOPOLOGY MEASUREMENTS //
         //////////////////////////////////////
-        /*
-        // SET SLAVE FIELD INITIALLY TO UNITY AND FIELDS TO GF FIELDS //
-        // NEEDED FOR SLAVE FIELD
-        ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::Init(StringManipulation::StringCast(IO::OutputDirectory,"SlaveID",MY_MPI_RNG_SEED,".txt").c_str());
-         
-         std::cerr << "#INITIAL PEAKSTRESS AT TIME T=" << Dynamics::Time() << " IS " << ChernSimonsNumber::SlaveFieldMethod::PeakStress <<  std::endl;
-        */
-
+        
         // RESET CHERN SIMONS-MEASUREMENTS //
         ChernSimonsNumber::DeltaNCsRealTime=DOUBLE(0.0);
         ChernSimonsNumber::DeltaNCsCoolRealTime=DOUBLE(0.0);
@@ -412,19 +381,17 @@ namespace Simulation {
         // CREATE INITIAL COOLING OUTPUT //
         CoolNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
         
-        // END OPTION //
-        
-        
+        /*
         // CALIBRATE //
         ChernSimonsNumber::CoolingMethod::Calibrate();
      
         // CREATE INITIAL CALIBRATION OUTPUT //
         CalibNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCalibration << " " << ChernSimonsNumber::DeltaNCsPreviousCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimeCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration << std::endl;
-        
-         
+        */
+    
         // INITIAL SCALE OBSERVABLES
         // OPTION FOR SCALE OBERSERVABLES
-        //ScaleObservables::SpatialWilsonLoop::BlockedWilsonLoopHistogram(StringManipulation::StringCast("MagneticLoopT",Dynamics::Time()).c_str());
+        ScaleObservables::SpatialWilsonLoop::BlockedWilsonLoopHistogram(StringManipulation::StringCast("MagneticLoopT",Dynamics::Time()).c_str());
         //ScaleObservables::OffAxisSpatialWilsonLoop::WilsonLoopHistogram(StringManipulation::StringCast("OffAxisWilsonLoopT",Dynamics::Time()).c_str());
 
         // END OPTION
@@ -434,7 +401,6 @@ namespace Simulation {
         // TIME EVOLUTION //
         ////////////////////
         
-        //INT MovieCount=0;
         
         while(Dynamics::Time()<MaxTime){
 
@@ -453,17 +419,16 @@ namespace Simulation {
                 EnergyOutStream << Dynamics::Time() << " " << Observables::Bulk::T00() << " " << Observables::Bulk::TXX() << " " << Observables::Bulk::TYY() << " " << Observables::Bulk::TZZ() << " " << Observables::Bulk::ELECTRIC() << " " << Observables::Bulk::MAGNETIC() << " " << Observables::HardScales::LambdaXX() << " " << Observables::HardScales::LambdaYY() << " " << Observables::HardScales::LambdaZZ()  << std::endl;
                 
             }
-            /*
+            
             // MEASURE SCALE OBERVABLE
-            if(Dynamics::tSteps%INT(100.0/(Qs*Dynamics::dTau))==0){
+            if(Dynamics::tSteps%INT(25.0/(Qs*Dynamics::dTau))==0){
                 
                 // OPTION FOR SCALE OBSERVABLES
                 ScaleObservables::SpatialWilsonLoop::BlockedWilsonLoopHistogram(StringManipulation::StringCast("MagneticLoopT",Dynamics::Time()).c_str());
-                //ScaleObservables::OffAxisSpatialWilsonLoop::WilsonLoopHistogram(StringManipulation::StringCast("OffAxisWilsonLoopT",Dynamics::Time()).c_str());
+                    //ScaleObservables::OffAxisSpatialWilsonLoop::WilsonLoopHistogram(StringManipulation::StringCast("OffAxisWilsonLoopT",Dynamics::Time()).c_str());
 
                 // END OPTION
             }
-             */
             
             /*
             // PERFORM GAUGE FIXING //
@@ -476,7 +441,7 @@ namespace Simulation {
                 CoulombGaugeFixing::SetCoulombGauge(StringManipulation::StringCast("GaugeFixingT",Dynamics::Time()).c_str(),GaugeFixingTotalSteps);
                 
                 // OPTION TO SAVE GAUGE FIXED FIELDS //
-                GaugeTransformation::Operations::SaveFields();
+                //GaugeTransformation::Operations::SaveFields();
                 // END OPTION //
                 
                 // MEASURE SPECTRA
@@ -485,48 +450,16 @@ namespace Simulation {
             }
             */
             
-            // UPDATE SLAVE FIELD //
-            // SET TO ZERO FOR NO SLAVE FIELD //
-            INT ChangeOfGauge=0;//ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::Update(NumberOfQuenchSteps);
-            
             // COOLED CHERN SIMONS DERIVATIVE //
-            if(Dynamics::tSteps%CoolingFrequency==0 && ChangeOfGauge==0){
+            if(Dynamics::tSteps%CoolingFrequency==0){
                 
                 // UPDATE COOLING //
                 ChernSimonsNumber::CoolingMethod::Update(1);
                 
                 // MEASURE DIFFERNCE IN CHERN SIMONS NUMBER  //
                 CoolNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
-                
-                //OPTION TO SPATIALLY MAP E.B //
-                /*
-                Observables::EdotBMap::CreateMap(StringManipulation::StringCast("HotEdotBMapC",MovieCount).c_str());
-                Observables::EdotBMap::CreateMap(StringManipulation::StringCast("CoolEdotBMapC",MovieCount).c_str(),ChernSimonsNumber::CoolingMethod::UMid,ChernSimonsNumber::CoolingMethod::EMid);
-                
-                MovieCount++;
-                 // END OPTION
-                 */
-                
-
             }
             
-            
-            // SYNCHRONIZE COOLED IMAGE IN NEW GAUGE //
-            if(ChangeOfGauge==1){
-                
-                // UPDATE COOLING //
-                ChernSimonsNumber::CoolingMethod::Update(1);
-                
-                // MEASURE DIFFERNCE IN CHERN SIMONS NUMBER  //
-                CoolNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
-                
-                // CHANGE GAUGE //
-                ChernSimonsNumber::SlaveFieldMethod::PerformTransformation();
-             
-                // UPDATE COOLING TO NEW GAUGE // NO OUTPUT //
-                ChernSimonsNumber::CoolingMethod::Update(0);
-
-            }
             /*
             // COOLING CALIBRATION //
             if(Dynamics::tSteps%CalibFrequency==0){
@@ -538,13 +471,14 @@ namespace Simulation {
                 CalibNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCalibration << " " << ChernSimonsNumber::DeltaNCsPreviousCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimeCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration << std::endl;
             }
             */
-            /*
+            
             // OPTION TO SAVE CONFIGURATION //
+            /*
             if(Dynamics::tSteps%ConfigSaveFrequency==0){
                 IO::SaveConfiguration(StringManipulation::StringCast("UOutT",Dynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",Dynamics::Time()).c_str());
             }
-            // END OPTION //
             */
+            // END OPTION //
             
             // PRECISION CHECKS //
             if(Dynamics::tSteps%1000==0){
@@ -573,22 +507,22 @@ namespace Simulation {
         ///////////
         // SETUP //
         ///////////
-    
+        
         //SET SEED //
-        MY_MPI_RNG_SEED=MPI_RNG_SEED;
+        MY_MPI_RNG_SEED=MPI_RNG_SEED; //1445124543
         
         //INITIALIZE RANDOM NUMBER GENERATOR //
         RandomNumberGenerator::Init(MY_MPI_RNG_SEED);
-    
+        
         //INITIALIZE DYNAMICS //
         Dynamics::Reset();
         
         //////////////////////
         // CREATE INFO FILE //
         //////////////////////
-
-        CreateInfoFile();
         
+        CreateInfoFile();
+
         ////////////////////////////
         // SET INITIAL CONDITIONS //
         ////////////////////////////
@@ -610,9 +544,9 @@ namespace Simulation {
         // TIME EVOLUTION //
         ////////////////////
         
-        Evolve(20.0);
+        Evolve(200.0);
+
         
-    
     }
     
     

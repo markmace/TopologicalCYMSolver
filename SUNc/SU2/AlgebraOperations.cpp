@@ -73,12 +73,21 @@ namespace SUNcAlgebra{
             else{LogU[0]=0; LogU[1]=0; LogU[2]=0;}
         }
         
+        // V.E.VDagger //
         void AdjointMultiplication(SU_Nc_FUNDAMENTAL_FORMAT *V,SU_Nc_ALGEBRA_FORMAT *E,SU_Nc_ALGEBRA_FORMAT *ENew){
             
             ENew[0]=E[0]*(V[0]*V[0] - V[1]*V[1] - V[2]*V[2] + V[3]*V[3]) + 2.0*(E[2]*(V[0]*V[2] - V[1]*V[3]) + E[1]*(V[0]*V[1] + V[2]*V[3]));
             ENew[1]=E[1]*(V[1]*V[1] - V[2]*V[2] - V[0]*V[0] + V[3]*V[3]) + 2.0*(E[2]*(V[1]*V[2] + V[0]*V[3]) + E[0]*(V[0]*V[1] - V[2]*V[3]));
             ENew[2]=E[2]*(V[2]*V[2] - V[0]*V[0] - V[1]*V[1] + V[3]*V[3]) + 2.0*(E[1]*(V[1]*V[2] - V[0]*V[3]) + E[0]*(V[0]*V[2] + V[1]*V[3]));
             
+        }
+        
+        // VDagger.E.V //
+        void InverseAdjointMultiplication(SU_Nc_FUNDAMENTAL_FORMAT *V,SU_Nc_ALGEBRA_FORMAT *E,SU_Nc_ALGEBRA_FORMAT *ENew){
+            
+            ENew[0]=E[0]*(V[0]*V[0] - V[1]*V[1] - V[2]*V[2] + V[3]*V[3]) + 2.0*(E[2]*(V[0]*V[2] + V[1]*V[3]) + E[1]*(V[0]*V[1] - V[2]*V[3]));
+            ENew[1]=E[1]*(V[1]*V[1] - V[2]*V[2] - V[0]*V[0] + V[3]*V[3]) + 2.0*(E[2]*(V[1]*V[2] - V[0]*V[3]) + E[0]*(V[0]*V[1] + V[2]*V[3]));
+            ENew[2]=E[2]*(V[2]*V[2] - V[0]*V[0] - V[1]*V[1] + V[3]*V[3]) + 2.0*(E[1]*(V[1]*V[2] + V[0]*V[3]) + E[0]*(V[0]*V[2] - V[1]*V[3]));
         }
         
     }

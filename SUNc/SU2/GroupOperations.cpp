@@ -209,6 +209,20 @@ namespace SUNcGroup{
 
             
         }
+        
+        void GetMatrix(const SU_Nc_FUNDAMENTAL_FORMAT *U,COMPLEX *UMatrix){
+            
+            //      MATRIX FORMAT       //
+            // u3 + i u2      u1 + i u0 //
+            //                          //
+            // -u1 + i u0     u3 - i u2 //
+            
+            UMatrix[0]=COMPLEX( U[3], U[2]);
+            UMatrix[1]=COMPLEX(-U[1], U[0]);
+            UMatrix[2]=COMPLEX( U[1], U[0]);
+            UMatrix[3]=COMPLEX( U[3],-U[2]);
+            
+        }
 
         
     }

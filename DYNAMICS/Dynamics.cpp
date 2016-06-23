@@ -14,7 +14,7 @@ namespace Dynamics{
     INT tSteps=0;
     
     //TIME INCREMENT
-    static const DOUBLE dTau=0.05;
+    static const DOUBLE dTau=0.025;
     
     //GET EVOLUTION TIME
     DOUBLE Time(){
@@ -207,15 +207,7 @@ namespace Dynamics{
         
         UpdateElectricFields(0,E->N[0]-1,0,E->N[1]-1,0,E->N[2]-1,U,E);
         
-        #if NAIVENCS_FLAG==YES_FLAG
-            ChernSimonsNumber::DeltaNCsRealTime+=DOUBLE(0.5)*dTau*ChernSimonsNumber::NCsDot(U,E);
-        #endif
-        
         UpdateGaugeLinks(0,U->N[0]-1,0,U->N[1]-1,0,U->N[2]-1,U,E);
-        
-        #if NAIVENCS_FLAG==YES_FLAG
-            ChernSimonsNumber::DeltaNCsRealTime+=DOUBLE(0.5)*dTau*ChernSimonsNumber::NCsDot(U,E);
-        #endif
         
         tSteps++;
         

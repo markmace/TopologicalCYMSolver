@@ -65,7 +65,7 @@ namespace GaugeTransformation{
             for(INT y=yLow;y<=yHigh;y++){
                 for(INT x=xLow;x<=xHigh;x++){
                     
-                    RandomNumberGenerator::SUNcMatrix(DOUBLE(2.0)*D_SQRT2*PI,G->Get(x,y,z)); //4.0 FOR TEST
+                    RandomNumberGenerator::SUNcMatrix(DOUBLE(2.0)*D_SQRT2*PI,G->Get(x,y,z));
                     
                 }
             }

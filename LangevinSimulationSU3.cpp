@@ -1,6 +1,6 @@
-//SPHALERON TRANSITION RATE SIMULATION
+//LANGEVIN TRANSITION RATE SIMULATION
 #define METRIC_FLAG MINKOWSKI_FLAG
-#define IC_FLAG LOAD_FLAG
+#define IC_FLAG THERMAL_FLAG
 
 #include <iostream>
 #include <string>
@@ -32,7 +32,6 @@
 #if IC_FLAG==LOAD_FLAG
     #include "IO/InputManagement.cpp"
 #endif
-
 /////////////////////////////////////////////
 // DEFINITION OF LATTICE GRID AND INDEXING //
 /////////////////////////////////////////////
@@ -72,10 +71,9 @@
 ////////////////////////
 // INITIAL CONDITIONS //
 ////////////////////////
-///// DO NOT TOUCH -- DO IN COMMAND LINE //////
+
 DOUBLE Qs=1.0;
 DOUBLE n0=1.0;
-///// DO NOT TOUCH -- DO IN COMMAND LINE //////
 
 ///////////////////////
 //REAL-TIME DYNAMICS //
@@ -124,10 +122,14 @@ DOUBLE n0=1.0;
 // THERMAL DYNAMICS //
 //////////////////////
 
-//INCLUDE DYNAMICS
-#if IC_FLAG==THERMAL_FLAG
 #include "DYNAMICS/ThermalDynamics.cpp"
-#endif
+
+///////////////////////
+//REAL-TIME DYNAMICS //
+///////////////////////
+
+//INCLUDE DYNAMICS
+#include "DYNAMICS/LangevinDynamics.cpp"
 
 ////////////////////////////
 //GAUGE FIXING PROCEDURES //
@@ -162,25 +164,6 @@ DOUBLE n0=1.0;
 ////////////////////////////////////////
 
 #include "TOPOLOGY/CoolingMethod.cpp"
-#include "TOPOLOGY/WindingNumber.cpp"
-#include "TOPOLOGY/SlaveFieldMethod.cpp"
-#include "TOPOLOGY/IntegralEstimateMethod.cpp"
-
-///////////////////////
-// SCALE OBSERVABLES //
-///////////////////////
-
-// SINGLE AND MULTI PLAQUETTE OPERATIONS
-#include "SCALEOBSERVABLES/GaugeLinkOperations.cpp"
-
-// CUBE OPERATIONS
-#include "SCALEOBSERVABLES/Cubes.cpp"
-
-// SPATIAL WILSON LOOP
-#include "SCALEOBSERVABLES/SpatialWilsonLoop.cpp"
-
-// OFF AXIS SPATIAL WILSON LOOP
-#include "SCALEOBSERVABLES/OffAxisSpatialWilsonLoop.cpp"
 
 //////////////////
 //MISCELLANEOUS //
@@ -192,15 +175,12 @@ DOUBLE n0=1.0;
     #include "IO/LoadConfiguration.cpp"
 #endif
 
-//INCLUDE MAP OF E.B
-#include "OBSERVABLES/EdotBMap.cpp"
 
 //////////
 //TESTS //
 //////////
 
 #include "MISC/GaugeInvarianceTest.cpp"
-
 
 ///////////////////////////
 // SIMULATION PROCEDURE  //
@@ -220,25 +200,22 @@ namespace Simulation {
     INT NumberOfQuenchSteps;
     
     void Init(){
-        
+    
         ///////////////////////////////////
         //SET NCS MEASUREMENT PARAMETERS //
         ///////////////////////////////////
         
-        
         // SET COOLING FREQUENCY //
-        CoolingFrequency=10;/*20;*/ ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps=128;//128;//96;
-        CalibFrequency=CoolingFrequency*200; ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps=128;//2336;
+        CoolingFrequency=20;/*20;*/ ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps=16;//128;//96;
+        CalibFrequency=CoolingFrequency*200; ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps=1744;//2336;
         
         
         // SET BLOCKING PARAMETERS //
         Cooling::BlockFrequency=8;//8;//16;
-        ChernSimonsNumber::CoolingMethod::StandardBlockingLevel=0;
-        ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel=2;
-
         
-        // SLAVE FIELD METHOD //
-        NumberOfQuenchSteps=2;
+        ChernSimonsNumber::CoolingMethod::StandardBlockingLevel=0;
+        
+        ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel=2;
         
         // CONSISTENCY CHECK FOR BLOCKING //
         if((ChernSimonsNumber::CoolingMethod::StandardBlockingLevel*Cooling::BlockFrequency>ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps) || (Cooling::BlockFrequency*ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel>ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps)){
@@ -247,43 +224,35 @@ namespace Simulation {
             exit(0);
             
         }
-
+        
         // SET GAUGE FIXING AND SPECTRA MEASUREMENT FREQUENCY //
-        GaugeFixingFrequency=INT(100.0/(Qs*Dynamics::dTau)); GaugeFixingTotalSteps=5000;
+        GaugeFixingFrequency=INT(100.0/(LangevinDynamics::Time())); GaugeFixingTotalSteps=5000;
         
         // SAVE CONFIGURATIONS
-        ConfigSaveFrequency=INT(1.0/(Qs*Dynamics::dTau));
+        ConfigSaveFrequency=INT(200.0/(LangevinDynamics::Time()));
         
         /////////////////////
         // INITIALIZATIONS //
         /////////////////////
         
-        //INITIALIZE LATTICE
+        // INITIALIZE 3D LATTICE SETUP //
         Lattice::Init();
         
-        //INITIALIZE GAUGE TRANSFORMATIONS
+        // INITIALIZE GAUGE TRANSFORMATIONS //
         GaugeTransformation::Init();
         
-        //INITIALIZE GAUGE TRANSFORMED FIELDS
+        // INITIALIZE GAUGE TRANSFORMED FIELDS //
         GaugeFixedVariables::Init();
         
-        //INITIALIZE FOURIER SPACE
+        // INITIALIZE FOURIER SPACE VARIABLES //
         FourierSpace::Init();
         
-        //INITIALIZE SLAVE FIELD METHOD
-        ChernSimonsNumber::SlaveFieldMethod::Init();
-        
-        //INITIALIZE COOLING METHOD //
+        // INITIALIZE COOLING METHOD //
         ChernSimonsNumber::CoolingMethod::Init();
         
-        // INITIALIZE WINDING NUMBER MEASUREMENT //
-        WindingNumber::Init();
+        //INITIALIZE LANGEVIN NOISE ELECTRIC FIELD
+        LangevinVariables::Init();
         
-        // INITIALIZE SLAVE FIELD DYNAMICS
-        ChernSimonsNumber::SlaveFieldMethod::Init();
-        
-        // INITIALIZE SLAVE FIELD DYNAMICS
-        ScaleObservables::SpatialWilsonLoop::Init();
         
     }
     
@@ -298,13 +267,8 @@ namespace Simulation {
         
         //CREATE INFO FILE CONTAINING PARAMETERS
         OutStream << "#INITIAL CONDITIONS" << std::endl;
-        #if IC_FLAG==THERMAL_FLAG
         OutStream << "#ThermalDynamics::beta= " << ThermalDynamics::beta << std::endl;
-        #endif
-        #if IC_FLAG==QP_FLAG
-        OutStream << "#Qs= " << Qs << std::endl;
-        OutStream << "#n0= " << n0 << std::endl;
-        #endif
+        OutStream << "#LangevinDynamics::beta= " << LangevinDynamics::beta << std::endl;
         OutStream << std::endl;
         
         OutStream << "#LATTICE DATA" << std::endl;
@@ -312,7 +276,7 @@ namespace Simulation {
         OutStream << "#ax,ay,az= " << GLinks::U->a[0] << " " << GLinks::U->a[1] << " " << GLinks::U->a[2] << std::endl;
         OutStream << "#dTau= " << Dynamics::dTau << std::endl;
         OutStream << std::endl;
-
+        
         OutStream << "#COOLING PARAMETERS" << std::endl;
         OutStream << "#SqrtDcTauOverSpacing = " << GradientFlow::SqrtDcTauOverSpacing << std::endl;
         OutStream << "#CoolingFrequency = " << CoolingFrequency << std::endl;
@@ -320,25 +284,21 @@ namespace Simulation {
         OutStream << "#StandardCoolingMaxSteps= " << ChernSimonsNumber::CoolingMethod::StandardCoolingMaxSteps << std::endl;
         OutStream << "#BlockFrequency= " << Cooling::BlockFrequency << std::endl;
         OutStream << std::endl;
-
+        
         OutStream << "#CALIBRATION PARAMETERS" << std::endl;
         OutStream << "#CalibFrequency= " << CalibFrequency << std::endl;
-        OutStream << "#CalibrationCoolingMaxSteps= " << ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps
- << std::endl;
+        OutStream << "#CalibrationCoolingMaxSteps= " << ChernSimonsNumber::CoolingMethod::CalibrationCoolingMaxSteps << std::endl;
         OutStream << "#CalibBlockingLevel= " << ChernSimonsNumber::CoolingMethod::CalibrationBlockingLevel << std::endl;
         OutStream << std::endl;
         
-        OutStream << "#SLAVE FIELD PARAMETERS" << std::endl;
-        OutStream << "#MaxDeviationLimit= " << ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::MaxDeviationLimit << std::endl;
-        OutStream << "#StressTolerance= " << ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::StressTolerance << std::endl;
-        OutStream << "#TransformationCounterLimit= " << ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::TransformationCounterLimit << std::endl;
-        OutStream << "#NumberOfQuenchSteps= " << NumberOfQuenchSteps << std::endl;
-        OutStream << std::endl;
-
         OutStream << "#GAUGE FIXING PARAMETERS" << std::endl;
         OutStream << "#GaugeFixingFrequency = " << GaugeFixingFrequency << std::endl;
         OutStream << "#GaugeFixingTotalSteps= " << GaugeFixingTotalSteps << std::endl;
         OutStream << std::endl;
+        
+        
+        // CLOSE OUPUT STREAM //
+        OutStream.close();
         
 
         
@@ -359,19 +319,20 @@ namespace Simulation {
         
         std::ofstream EnergyOutStream,CoolNCsOutStream,CalibNCsOutStream;
         
-        EnergyOutStream.open(StringManipulation::StringCast(IO::OutputDirectory,"EnergyID",MY_MPI_RNG_SEED,".txt").c_str());
-        
         CoolNCsOutStream.open(StringManipulation::StringCast(IO::OutputDirectory,"CoolNCsID",MY_MPI_RNG_SEED,".txt").c_str());
         
         CalibNCsOutStream.open(StringManipulation::StringCast(IO::OutputDirectory,"CalibNCsID",MY_MPI_RNG_SEED,".txt").c_str());
+        
+        EnergyOutStream.open(StringManipulation::StringCast(IO::OutputDirectory,"EnergyID",MY_MPI_RNG_SEED,".txt").c_str());
 
         ///////////////////////////////
         // INITIAL STATE OBSERVABLES //
         ///////////////////////////////
         
         // OPTION TO SAVE INITIAL CONFIGURATION //
-        IO::SaveConfiguration(StringManipulation::StringCast("UOutT",Dynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",Dynamics::Time()).c_str());
+        IO::SaveConfiguration(StringManipulation::StringCast("UOutT",LangevinDynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",LangevinDynamics::Time()).c_str());
         // END OPTION //
+
         
         // MEASURE BULK OBSERVABLES //
         Observables::Bulk::Update();
@@ -379,28 +340,21 @@ namespace Simulation {
         // MEASURE HARD SCALES //
         Observables::HardScales::Update();
         
-        EnergyOutStream << Dynamics::Time() << " " << Observables::Bulk::T00() << " " << Observables::Bulk::TXX() << " " << Observables::Bulk::TYY() << " " << Observables::Bulk::TZZ() << " " << Observables::Bulk::ELECTRIC() << " " << Observables::Bulk::MAGNETIC() << " " << Observables::HardScales::LambdaXX() << " " << Observables::HardScales::LambdaYY() << " " << Observables::HardScales::LambdaZZ()  << std::endl;
+        EnergyOutStream << LangevinDynamics::Time() << " " << Observables::Bulk::T00() << " " << Observables::Bulk::TXX() << " " << Observables::Bulk::TYY() << " " << Observables::Bulk::TZZ() << " " << Observables::Bulk::ELECTRIC() << " " << Observables::Bulk::MAGNETIC() << " " << Observables::HardScales::LambdaXX() << " " << Observables::HardScales::LambdaYY() << " " << Observables::HardScales::LambdaZZ()  << std::endl;
         /*
         // RESET COULOMB GAUGE FIXING ALGORITHMS //
         CoulombGaugeFixing::Reset();
         
         // PERFORM COULOMB GAUGE FIXING //
-        CoulombGaugeFixing::SetCoulombGauge(StringManipulation::StringCast("GaugeFixingT",Dynamics::Time()).c_str(),GaugeFixingTotalSteps);
+        CoulombGaugeFixing::SetCoulombGauge(StringManipulation::StringCast("GaugeFixingT",LangevinDynamics::Time()).c_str(),GaugeFixingTotalSteps);
         
         // MEASURE SPECTRA
-        Observables::Spectra::Compute(StringManipulation::StringCast("SpectraT",Dynamics::Time()).c_str());
-        */
+        Observables::Spectra::Compute(StringManipulation::StringCast("SpectraT",LangevinDynamics::Time()).c_str());
+         */
         //////////////////////////////////////
         // INITIALIZE TOPOLOGY MEASUREMENTS //
         //////////////////////////////////////
-        /*
-        // SET SLAVE FIELD INITIALLY TO UNITY AND FIELDS TO GF FIELDS //
-        // NEEDED FOR SLAVE FIELD
-        ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::Init(StringManipulation::StringCast(IO::OutputDirectory,"SlaveID",MY_MPI_RNG_SEED,".txt").c_str());
-         
-         std::cerr << "#INITIAL PEAKSTRESS AT TIME T=" << Dynamics::Time() << " IS " << ChernSimonsNumber::SlaveFieldMethod::PeakStress <<  std::endl;
-        */
-
+        
         // RESET CHERN SIMONS-MEASUREMENTS //
         ChernSimonsNumber::DeltaNCsRealTime=DOUBLE(0.0);
         ChernSimonsNumber::DeltaNCsCoolRealTime=DOUBLE(0.0);
@@ -410,39 +364,27 @@ namespace Simulation {
         ChernSimonsNumber::CoolingMethod::Start();
         
         // CREATE INITIAL COOLING OUTPUT //
-        CoolNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
+        CoolNCsOutStream << LangevinDynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
         
-        // END OPTION //
-        
-        
+        /*
         // CALIBRATE //
         ChernSimonsNumber::CoolingMethod::Calibrate();
-     
+        
         // CREATE INITIAL CALIBRATION OUTPUT //
-        CalibNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCalibration << " " << ChernSimonsNumber::DeltaNCsPreviousCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimeCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration << std::endl;
-        
-         
-        // INITIAL SCALE OBSERVABLES
-        // OPTION FOR SCALE OBERSERVABLES
-        //ScaleObservables::SpatialWilsonLoop::BlockedWilsonLoopHistogram(StringManipulation::StringCast("MagneticLoopT",Dynamics::Time()).c_str());
-        //ScaleObservables::OffAxisSpatialWilsonLoop::WilsonLoopHistogram(StringManipulation::StringCast("OffAxisWilsonLoopT",Dynamics::Time()).c_str());
-
-        // END OPTION
-        
-        
+        CalibNCsOutStream << LangevinDynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCalibration << " " << ChernSimonsNumber::DeltaNCsPreviousCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimeCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration << std::endl;
+        */
         ////////////////////
         // TIME EVOLUTION //
         ////////////////////
         
-        //INT MovieCount=0;
         
-        while(Dynamics::Time()<MaxTime){
+        while(LangevinDynamics::Time()<MaxTime){
 
             // UPDATE GAUGE LINKS AND ELECTRIC FIELD VARIABLES //
-            Dynamics::Update();
+            LangevinDynamics::Update();
             
             // CHECK BULK OBSERVABLES //
-            if(Dynamics::tSteps%20==0){
+            if(LangevinDynamics::tauLSteps%20==0){
                 
                 // MEASURE BULK OBSERVABLES //
                 Observables::Bulk::Update();
@@ -450,104 +392,60 @@ namespace Simulation {
                 // MEASURE HARD SCALES //
                 Observables::HardScales::Update();
                 
-                EnergyOutStream << Dynamics::Time() << " " << Observables::Bulk::T00() << " " << Observables::Bulk::TXX() << " " << Observables::Bulk::TYY() << " " << Observables::Bulk::TZZ() << " " << Observables::Bulk::ELECTRIC() << " " << Observables::Bulk::MAGNETIC() << " " << Observables::HardScales::LambdaXX() << " " << Observables::HardScales::LambdaYY() << " " << Observables::HardScales::LambdaZZ()  << std::endl;
+                EnergyOutStream << LangevinDynamics::Time() << " " << Observables::Bulk::T00() << " " << Observables::Bulk::TXX() << " " << Observables::Bulk::TYY() << " " << Observables::Bulk::TZZ() << " " << Observables::Bulk::ELECTRIC() << " " << Observables::Bulk::MAGNETIC() << " " << Observables::HardScales::LambdaXX() << " " << Observables::HardScales::LambdaYY() << " " << Observables::HardScales::LambdaZZ()  << std::endl;
                 
             }
-            /*
-            // MEASURE SCALE OBERVABLE
-            if(Dynamics::tSteps%INT(100.0/(Qs*Dynamics::dTau))==0){
-                
-                // OPTION FOR SCALE OBSERVABLES
-                ScaleObservables::SpatialWilsonLoop::BlockedWilsonLoopHistogram(StringManipulation::StringCast("MagneticLoopT",Dynamics::Time()).c_str());
-                //ScaleObservables::OffAxisSpatialWilsonLoop::WilsonLoopHistogram(StringManipulation::StringCast("OffAxisWilsonLoopT",Dynamics::Time()).c_str());
-
-                // END OPTION
-            }
-             */
-            
             /*
             // PERFORM GAUGE FIXING //
-            if(Dynamics::tSteps%GaugeFixingFrequency==0){
+            if(LangevinDynamics::tauLSteps%GaugeFixingFrequency==0){
                 
                 // RESET COULOMB GAUGE FIXING ALGORITHMS //
                 CoulombGaugeFixing::Reset();
                 
                 // PERFORM GAUGE FIXING //
-                CoulombGaugeFixing::SetCoulombGauge(StringManipulation::StringCast("GaugeFixingT",Dynamics::Time()).c_str(),GaugeFixingTotalSteps);
+                CoulombGaugeFixing::SetCoulombGauge(StringManipulation::StringCast("GaugeFixingT",LangevinDynamics::Time()).c_str(),GaugeFixingTotalSteps);
                 
                 // OPTION TO SAVE GAUGE FIXED FIELDS //
-                GaugeTransformation::Operations::SaveFields();
+                //GaugeTransformation::Operations::SaveFields();
                 // END OPTION //
                 
                 // MEASURE SPECTRA
-                Observables::Spectra::Compute(StringManipulation::StringCast("SpectraT",Dynamics::Time()).c_str());
+                Observables::Spectra::Compute(StringManipulation::StringCast("SpectraT",LangevinDynamics::Time()).c_str());
                 
             }
             */
             
-            // UPDATE SLAVE FIELD //
-            // SET TO ZERO FOR NO SLAVE FIELD //
-            INT ChangeOfGauge=0;//ChernSimonsNumber::SlaveFieldMethod::QuenchDynamics::Update(NumberOfQuenchSteps);
-            
             // COOLED CHERN SIMONS DERIVATIVE //
-            if(Dynamics::tSteps%CoolingFrequency==0 && ChangeOfGauge==0){
+            if(LangevinDynamics::tauLSteps%CoolingFrequency==0){
                 
                 // UPDATE COOLING //
                 ChernSimonsNumber::CoolingMethod::Update(1);
                 
                 // MEASURE DIFFERNCE IN CHERN SIMONS NUMBER  //
-                CoolNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
-                
-                //OPTION TO SPATIALLY MAP E.B //
-                /*
-                Observables::EdotBMap::CreateMap(StringManipulation::StringCast("HotEdotBMapC",MovieCount).c_str());
-                Observables::EdotBMap::CreateMap(StringManipulation::StringCast("CoolEdotBMapC",MovieCount).c_str(),ChernSimonsNumber::CoolingMethod::UMid,ChernSimonsNumber::CoolingMethod::EMid);
-                
-                MovieCount++;
-                 // END OPTION
-                 */
-                
-
+                CoolNCsOutStream << LangevinDynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
             }
             
-            
-            // SYNCHRONIZE COOLED IMAGE IN NEW GAUGE //
-            if(ChangeOfGauge==1){
-                
-                // UPDATE COOLING //
-                ChernSimonsNumber::CoolingMethod::Update(1);
-                
-                // MEASURE DIFFERNCE IN CHERN SIMONS NUMBER  //
-                CoolNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << " " << ChernSimonsNumber::DeltaNCsCooling << std::endl;
-                
-                // CHANGE GAUGE //
-                ChernSimonsNumber::SlaveFieldMethod::PerformTransformation();
-             
-                // UPDATE COOLING TO NEW GAUGE // NO OUTPUT //
-                ChernSimonsNumber::CoolingMethod::Update(0);
-
-            }
             /*
             // COOLING CALIBRATION //
-            if(Dynamics::tSteps%CalibFrequency==0){
+            if(LangevinDynamics::tauLSteps%CalibFrequency==0){
                 
                 // UPDATE COOLING //
                 ChernSimonsNumber::CoolingMethod::Calibrate();
                 
                 // MEASURE OUTPUT //
-                CalibNCsOutStream << Dynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCalibration << " " << ChernSimonsNumber::DeltaNCsPreviousCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimeCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration << std::endl;
+                CalibNCsOutStream << LangevinDynamics::Time() << " " << ChernSimonsNumber::DeltaNCsCalibration << " " << ChernSimonsNumber::DeltaNCsPreviousCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimeCalibration << " " << ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration << std::endl;
             }
             */
-            /*
             // OPTION TO SAVE CONFIGURATION //
-            if(Dynamics::tSteps%ConfigSaveFrequency==0){
-                IO::SaveConfiguration(StringManipulation::StringCast("UOutT",Dynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",Dynamics::Time()).c_str());
-            }
+            /*
+             if(LangevinDynamics::tauLSteps%ConfigSaveFrequency==0){
+             IO::SaveConfiguration(StringManipulation::StringCast("UOutT",LangevinDynamics::Time()).c_str(),StringManipulation::StringCast("EOutT",LangevinDynamics::Time()).c_str());
+             }
+             */
             // END OPTION //
-            */
             
             // PRECISION CHECKS //
-            if(Dynamics::tSteps%1000==0){
+            if(LangevinDynamics::tauLSteps%1000==0){
                 
                 //CHECK GAUSS LAW VIOLATION
                 Observables::GaussLaw::CheckViolation();
@@ -580,21 +478,19 @@ namespace Simulation {
         //INITIALIZE RANDOM NUMBER GENERATOR //
         RandomNumberGenerator::Init(MY_MPI_RNG_SEED);
     
-        //INITIALIZE DYNAMICS //
+        //INITIALIZE LANGEVIN DYNAMICS //
         Dynamics::Reset();
+        LangevinDynamics::Reset();
         
         //////////////////////
         // CREATE INFO FILE //
         //////////////////////
-
+        
         CreateInfoFile();
         
-        ////////////////////////////
-        // SET INITIAL CONDITIONS //
-        ////////////////////////////
-        #if IC_FLAG==QP_FLAG
-        InitialConditions::SetQuasiParticles();
-        #endif
+        //////////////////////////
+        // SET INITIAL CONDITON //
+        //////////////////////////
         
         #if IC_FLAG==LOAD_FLAG
         IO::LoadConfiguration(GLinks::U,EFields::E);
@@ -610,8 +506,8 @@ namespace Simulation {
         // TIME EVOLUTION //
         ////////////////////
         
-        Evolve(20.0);
-        
+        Evolve(1000.0);
+
     
     }
     

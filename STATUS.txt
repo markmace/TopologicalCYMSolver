@@ -1,0 +1,5 @@
+2/17/2016 -- UNCHECKED LANGEVIN -- Agrees with GDM within error bars for SU(2), but doesn't agree with AR
+2/17/2016 -- SU(3) ALMOST IN PLACE -- Dynamics seems to work, adjoint multiplication as well. SU3 Log not in place.
+2/24/2016 -- ADJOINT MULTIPLICATION IN PLACE -- NEW DIAGONALIZATION IN PLACE -- In an external program is able to reproduce Exp(i alpha) -- LOG CHECKED THAT IT WORKS VERSUS MATHEMATICA AND EXP(I *(-I LOG(a)))=a
+3/11/2016 -- STILL NOT SURE ABOUT LANGEVIN -- SU(3) SEEMS GOOD
+3/17/2016 -- LANGEVIN HAS PASSED TEST OF SDE CALCULUS LIMIT FOR SU(2)

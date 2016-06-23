@@ -40,7 +40,7 @@ public:
         
     }
     
-    DOUBLE* Get(INT x,INT y,INT z,INT mu,INT a){
+    SU_Nc_ALGEBRA_FORMAT* Get(INT x,INT y,INT z,INT mu,INT a){
         
         return &E[Index(x,y,z,mu,a)];
     }

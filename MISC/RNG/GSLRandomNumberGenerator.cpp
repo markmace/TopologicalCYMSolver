@@ -33,6 +33,11 @@ namespace RandomNumberGenerator{
     }
     
     //GAUSSIAN DISTRIBUTED RANDOM NUMBER
+    DOUBLE Gauss(DOUBLE Amplitude){
+        return gsl_ran_gaussian(Generator,Amplitude);
+    }
+    
+    //GAUSSIAN DISTRIBUTED RANDOM NUMBER
     std::complex<DOUBLE> ComplexGauss(){
         
         DOUBLE Re=gsl_ran_gaussian(Generator,1.0); DOUBLE Im=gsl_ran_gaussian(Generator,1.0);
@@ -47,6 +52,7 @@ namespace RandomNumberGenerator{
         SU_Nc_ALGEBRA_FORMAT alpha[SUNcAlgebra::VectorSize];
         
         for(int a=0;a<SUNcAlgebra::VectorSize;a++){
+            
             alpha[a]=rng();
         }
         

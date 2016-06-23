@@ -1,6 +1,6 @@
 namespace IO{
     
-    void SaveConfiguration(std::string Ufname,std::string Efname){
+    void SaveConfiguration(std::string Ufname,std::string Efname,GaugeLinks *U,ElectricFields *E){
         
         // OUTPUT STREAMS //
         std::ofstream UOutStream,EOutStream;
@@ -16,22 +16,33 @@ namespace IO{
         UOutStream.precision(OUTPUT_PRECISION); EOutStream.precision(OUTPUT_PRECISION);
         
         // CREATE OUTPUT //
-        for(INT z=0;z<GLinks::U->N[2];z++){
-            for(INT y=0;y<GLinks::U->N[1];y++){
-                for(INT x=0;x<GLinks::U->N[0];x++){
+        for(INT z=0;z<U->N[2];z++){
+            for(INT y=0;y<U->N[1];y++){
+                for(INT x=0;x<U->N[0];x++){
                     for(INT mu=0;mu<Lattice::Dimension;mu++){
                         
                         // OUTPUT GAUGE LINKS //
-                        UOutStream << x << " " << y << " " << z << " " << mu << " " << SUNcGroup::IO::MatrixToString(GLinks::U->Get(x,y,z,mu)) << std::endl;
+                        UOutStream << x << " " << y << " " << z << " " << mu << " " << SUNcGroup::IO::MatrixToString(U->Get(x,y,z,mu)) << std::endl;
+                        /*
+                        // BEGIN SAYANTAN OUTPUT //
+                        COMPLEX UMat[Nc*Nc];
+                        SUNcGroup::Operations::GetMatrix(GLinks::U->Get(x,y,z,mu),UMat);
                         
+                        UOutStream << std::real(UMat[0]) <<  " " << std::imag(UMat[0]) << std::endl;
+                        UOutStream << std::real(UMat[2]) <<  " " << std::imag(UMat[2]) << std::endl;
+                        UOutStream << std::real(UMat[1]) <<  " " << std::imag(UMat[1]) << std::endl;
+                        UOutStream << std::real(UMat[3]) <<  " " << std::imag(UMat[3]) << std::endl;
+                        // END SAYANTAN OUTPUT //
+                        */
                         // OUTPUT ELECTRIC FIELDS //
                         EOutStream << x << " " << y << " " << z << " " << mu;
                         
                         for(INT a=0;a<SUNcAlgebra::VectorSize;a++){
-                            EOutStream << " " << EFields::E->Get(x,y,z,mu,a)[0];
+                            EOutStream << " " << E->Get(x,y,z,mu,a)[0];
                         }
                         
                         EOutStream << std::endl;
+                        
                         
                     }
                     
@@ -42,6 +53,12 @@ namespace IO{
         // CLOSE OUTPUT STREAM //
         UOutStream.close(); EOutStream.close();
         
+    }
+    // OVERLOAD //
+    void SaveConfiguration(std::string Ufname,std::string Efname){
+        
+        SaveConfiguration(Ufname,Efname,GLinks::U,EFields::E);
+    
     }
     
     

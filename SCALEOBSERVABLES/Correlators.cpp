@@ -1,157 +1,158 @@
-namespace Observables{
+namespace ScaleObservables{
     
     namespace Correlators{
         
-        FFT3D *Correlators;
-        
-        void Init(){
+        void ComputeCorrelators(INT x1,INT y1,INT z1,INT x2,INT y2,INT z2,GaugeLinks *U,ElectricFields *E,DOUBLE &E1E2,DOUBLE &B1B2){
             
-            // ALLOCATE FOURIER TRANSFORM OF E,B,E.B SQUARED CORRELATOR //
-            Correlators=new FFT3D(Lattice::N[0],Lattice::N[1],Lattice::N[2],3);
             
-        }
-        
-        void Measure(std::string fname,GaugeLinks *U,ElectricFields *E){
+            /////////////////////////////
+            //GET PARALLEL TRANSPORTER //
+            /////////////////////////////
             
-            std::cerr << "#MEASURING E AND B CORREALTORS" << std::endl;
+            SU_Nc_FUNDAMENTAL_FORMAT U12Transporter[SUNcGroup::MatrixSize];
             
-            // NORMALIZATION FACTOR //
-            DOUBLE NormalizationFactor=1.0/(Lattice::N[0]*Lattice::N[1]*Lattice::N[2]);
+            GetTransporter(x1,y1,z1,x2,y2,z2,U12Transporter,U);
             
-            //BUFFERS FOR AVERAGE FIELD STRENGTH
+            
+            ////////////////////////////////
+            // COMPUTE LOCAL FIELD VALUES //
+            ////////////////////////////////
+            
+            // SET COMPUTE BUFFERS //
+            
             SET_AVG_FIELD_STRENGTH_BUFFERS();
             
-            // CONSTANTS NEEDED TO E AND B SQUARED //
-            DOUBLE cB[Lattice::Dimension];
-            DOUBLE cE[Lattice::Dimension];
-            for(int mu=0;mu<Lattice::Dimension;mu++){
+            // SET VALUE ARRAYS //
+            DOUBLE ExStart[SUNcAlgebra::VectorSize];
+            DOUBLE EyStart[SUNcAlgebra::VectorSize];
+            DOUBLE EzStart[SUNcAlgebra::VectorSize];
+            
+            DOUBLE BxStart[SUNcAlgebra::VectorSize];
+            DOUBLE ByStart[SUNcAlgebra::VectorSize];
+            DOUBLE BzStart[SUNcAlgebra::VectorSize];
+            
+            
+            // COMPUTE EStart AND BStart //
+            COMPUTE_AVG_FIELD_STRENGTH(x1,y1,z1);
+            
+            for(INT a=0;a<SUNcAlgebra::VectorSize;a++){
                 
-                cB[mu]=(Dynamics::gDownMetric[mu]/SQR(Dynamics::MetricDeterminant)) * SQR(U->a[mu]*SQR(Lattice::aScale)/U->aCube);
-                cE[mu]=(Dynamics::gDownMetric[mu]/SQR(Dynamics::MetricDeterminant)) * SQR(U->a[mu]*SQR(Lattice::aScale)/U->aCube);
-            }
-            
-            // CONSTANTS NEEDED FOR E.B SQUARED //
-            DOUBLE cS[Lattice::Dimension];
-            
-            for(INT mu=0;mu<Lattice::Dimension;mu++){
-                cS[mu]=Lattice::aScale*SQR(U->a[mu])/U->aCube;
-            }
-            
-            //SET LOCAL VALUES
-            DOUBLE EELoc,BBLoc,EBEBLoc;
-            
-            for(INT z=0;z<Lattice::N[2];z++){
-                for(INT y=0;y<Lattice::N[1];y++){
-                    for(INT x=0;x<Lattice::N[0];x++){
-                        
-                        COMPUTE_AVG_FIELD_STRENGTH(x,y,z);
-                        
-                        // UPDATE E.B //
-                        EELoc=cE[0]*E0SqrLoc+cE[1]*E1SqrLoc+cE[2]*E2SqrLoc;
-                        BBLoc=cB[0]*B0SqrLoc+cB[1]*B1SqrLoc+cB[2]*B2SqrLoc;
-                        EBEBLoc=cS[0]*SUNcAlgebra::Operations::ScalarProduct(E0Loc,B0Loc)+cS[1]*SUNcAlgebra::Operations::ScalarProduct(E1Loc,B1Loc)+cS[2]*SUNcAlgebra::Operations::ScalarProduct(E2Loc,B2Loc);
-                        // SET CORRELATOR IN POSITION SPACE INITALLY //
-                        Correlators->SetX(x,y,z,0,EELoc);
-                        Correlators->SetX(x,y,z,1,BBLoc);
-                        Correlators->SetX(x,y,z,2,EBEBLoc);
-                        
-                        
-                    }
-                }
-            }
+                ExStart[a]=E0Loc[a]; EyStart[a]=E1Loc[a]; EzStart[a]=E2Loc[a];
+                BxStart[a]=B0Loc[a]; ByStart[a]=B1Loc[a]; BzStart[a]=B2Loc[a];
 
-            // PERFORM FFT //
-            Correlators->ExecuteXtoP();
-            
-            // COMPUTE CORRELATORS IN FOURIER SPACE //
-            MultiHistogram *MomentumCorrelators=new MultiHistogram(DOUBLE(0.0),2.0*D_SQRT3,4*Lattice::N[0],3);
-            
-            COMPLEX cDpx,cDpy,cDpz; DOUBLE pAbs;
-            
-            for(INT pZIndex=0;pZIndex<Lattice::N[2];pZIndex++){
-                for(INT pYIndex=0;pYIndex<Lattice::N[1];pYIndex++){
-                    for(INT pXIndex=0;pXIndex<Lattice::N[0];pXIndex++){
-                        
-                        // COMPUTE FOURIER TRACE //
-                        COMPLEX E2=COMPLEX(0.0,0.0);
-                        COMPLEX B2=COMPLEX(0.0,0.0);
-                        COMPLEX EB2=COMPLEX(0.0,0.0);
-                        
-                        COMPLEX EE=Correlators->GetP(pXIndex,pYIndex,pZIndex,0);
-                        COMPLEX BB=Correlators->GetP(pXIndex,pYIndex,pZIndex,1);
-                        COMPLEX EBEB=Correlators->GetP(pXIndex,pYIndex,pZIndex,2);
-                        
-                        E2=NormalizationFactor*(EE*conj(EE));
-                        B2=NormalizationFactor*(BB*conj(BB));
-                        EB2=NormalizationFactor*(EBEB*conj(EBEB));
-                        
-                        // WRITE TO ARRAY //
-                        Correlators->SetP(pXIndex,pYIndex,pZIndex,0,E2);
-                        Correlators->SetP(pXIndex,pYIndex,pZIndex,1,B2);
-                        Correlators->SetP(pXIndex,pYIndex,pZIndex,2,EB2);
-                        
-                        GetAbsMomentum(pXIndex,pYIndex,pZIndex,pAbs)
-                        
-                        DOUBLE Values[3]={abs(E2),abs(B2),abs(EB2)};
-                        
-                        MomentumCorrelators->Count(pAbs,Values);
-
-                        
-                    }
-                }
             }
             
-            // OUTPUT MOMENTUM SPACE CORRELATORS //
-            std::string MomentumCorrelatorsOutputFile=StringManipulation::StringCast(IO::OutputDirectory,"Momentum",fname,"ID",RandomNumberGenerator::MySEED,".txt");
             
-            MomentumCorrelators->Output(MomentumCorrelatorsOutputFile);
+            // SET VALUE ARRAYS //
+            DOUBLE ExEnd[SUNcAlgebra::VectorSize];
+            DOUBLE EyEnd[SUNcAlgebra::VectorSize];
+            DOUBLE EzEnd[SUNcAlgebra::VectorSize];
             
-            delete MomentumCorrelators;
+            DOUBLE BxEnd[SUNcAlgebra::VectorSize];
+            DOUBLE ByEnd[SUNcAlgebra::VectorSize];
+            DOUBLE BzEnd[SUNcAlgebra::VectorSize];
             
-            // PEFRORM FFT //
-            Correlators->ExecutePtoX();
+            // COMPUTE EEnd AND BEnd //
+            COMPUTE_AVG_FIELD_STRENGTH(x2,y2,z2);
             
-            // CREATE HISTOGRAM //
-            MultiHistogram *CorrelatorsResult=new MultiHistogram(DOUBLE(0.0),(Lattice::N[0]/2),4*Lattice::N[0],3);
+            // PARALLEL TRANSPORT TO STARTING POINT  -- COMPUTE U_{x->y}^{ab} B^{b}_{i}(y) //
             
-            // COUNT ONLY HALF OF THE PHASE-SPACE TO ACCOUNT FOR PERIODICITY //
-            for(INT z=0;z<Lattice::N[2]/2;z++){
-                for(INT y=0;y<Lattice::N[1]/2;y++){
-                    for(INT x=0;x<Lattice::N[0]/2;x++){
-                        
-                        // GET DISTANCE AND E,B,E.B SQUARED AMPLITUDE //
-                        DOUBLE r=sqrt(SQR(x)+SQR(y)+SQR(z));
-                        DOUBLE De2=NormalizationFactor*real(Correlators->GetX(x,y,z,0)); DOUBLE Db2=NormalizationFactor*real(Correlators->GetX(x,y,z,1)); DOUBLE Deb2=NormalizationFactor*real(Correlators->GetX(x,y,z,2));
-                        
-                        DOUBLE Values[3]={De2,Db2,Deb2};
-                        
-                        // COUNT TO HISTOGRAM //
-                        CorrelatorsResult->Count(r,Values);
+            SUNcAlgebra::Operations::AdjointMultiplication(U12Transporter,E0Loc,ExEnd);
+            SUNcAlgebra::Operations::AdjointMultiplication(U12Transporter,E1Loc,EyEnd);
+            SUNcAlgebra::Operations::AdjointMultiplication(U12Transporter,E2Loc,EzEnd);
 
-                    }
-                }
-            }
             
-            // SET OUPUT FILE //
-            std::string CorrelatorsOutputFile=StringManipulation::StringCast(IO::OutputDirectory,fname,"ID",RandomNumberGenerator::MySEED,".txt");
+            SUNcAlgebra::Operations::AdjointMultiplication(U12Transporter,B0Loc,BxEnd);
+            SUNcAlgebra::Operations::AdjointMultiplication(U12Transporter,B1Loc,ByEnd);
+            SUNcAlgebra::Operations::AdjointMultiplication(U12Transporter,B2Loc,BzEnd);
             
-            // CREATE OUPUT //
-            CorrelatorsResult->Output(CorrelatorsOutputFile);
+            // COMPUTE E^{a}_{i}(x) U_{x->y}^{ab} E^{b}_{i}(y) AND B^{a}_{i}(x) U_{x->y}^{ab} B^{b}_{i}(y) //
             
-            // CLEAN-UP //
-            delete CorrelatorsResult;
+            DOUBLE EXCorr=SUNcAlgebra::Operations::ScalarProduct(ExStart,ExEnd);
+            DOUBLE EYCorr=SUNcAlgebra::Operations::ScalarProduct(EyStart,EyEnd);
+            DOUBLE EZCorr=SUNcAlgebra::Operations::ScalarProduct(EzStart,EzEnd);
+            
+            DOUBLE BXCorr=SUNcAlgebra::Operations::ScalarProduct(BxStart,BxEnd);
+            DOUBLE BYCorr=SUNcAlgebra::Operations::ScalarProduct(ByStart,ByEnd);
+            DOUBLE BZCorr=SUNcAlgebra::Operations::ScalarProduct(BzStart,BzEnd);
+
+            
+            E1E2=EXCorr+EYCorr+EZCorr;  B1B2=BXCorr+BYCorr+BZCorr;
+            
+            
             
         }
         
-        void Measure(std::string fname){
+        void CorrelatorHistogram(std::string fname,INT nPoints,GaugeLinks *U,ElectricFields *E){
             
-            Measure(fname,GLinks::U,EFields::E);
+            // COMMANDLINE READOUT
+            std::cerr << "#BEGIN CORRELATOR CALCUALTIONS" << std::endl;
             
+            // MAX LENGTH //
+            DOUBLE MAX_LENGTH=std::pow((Lattice::N[0]/2*Lattice::a[0])*(Lattice::N[1]/2*Lattice::a[1])*(Lattice::N[2]/2*Lattice::a[2]),1.0/3.0);
+            
+            INT NumberOfBins=8*INT(MAX_LENGTH);
+            
+            // CREATE HISTOGRAMS
+            Histogram *ECorrelator=new Histogram(0.0,MAX_LENGTH,NumberOfBins);
+            Histogram *BCorrelator=new Histogram(0.0,MAX_LENGTH,NumberOfBins);
+
+            for(INT nP=0;nP<nPoints;nP++){
+                
+                // DETERMINE STARTING POINT //
+                INT x1=MOD(INT(RandomNumberGenerator::rng()*(U->N[0])),U->N[0]);
+                INT y1=MOD(INT(RandomNumberGenerator::rng()*(U->N[1])),U->N[1]);
+                INT z1=MOD(INT(RandomNumberGenerator::rng()*(U->N[2])),U->N[2]);
+                
+                // DETERMINE END POINT //
+                INT x2=MOD(INT(RandomNumberGenerator::rng()*(U->N[0])),U->N[0]);
+                INT y2=MOD(INT(RandomNumberGenerator::rng()*(U->N[1])),U->N[1]);
+                INT z2=MOD(INT(RandomNumberGenerator::rng()*(U->N[2])),U->N[2]);
+                
+                // GET DISTANCE //
+                DOUBLE L=GetDistance(x1,y1,z1,x2,y2,z2);
+                
+                // CHECK LENGTH //
+                if(L<MAX_LENGTH){
+                    
+                    // CORRELATORS //
+                    DOUBLE B1B2Loc=0; DOUBLE E1E2Loc=0;
+                    
+                    // COMPUTE CORRELATORS //
+                    ComputeCorrelators(x1,y1,z1,x2,y2,z2,U,E,E1E2Loc,B1B2Loc);
+                    
+                    // COUNT TO HISTOGRAM //
+                    ECorrelator->Count(L,E1E2Loc);
+                    BCorrelator->Count(L,B1B2Loc);
+                    
+                }
+                
+            }
+            
+            // SET OUTPUT FILE //
+            std::string EOutputFile=StringManipulation::StringCast(IO::OutputDirectory,"E",fname,"ID",RandomNumberGenerator::MySEED,".txt");
+            std::string BOutputFile=StringManipulation::StringCast(IO::OutputDirectory,"B",fname,"ID",RandomNumberGenerator::MySEED,".txt");
+            // SET HEADER FILE //
+            std::string HeaderMessage=StringManipulation::StringCast("#L ","CORR ");
+            
+            // OUTPUT CORRELATORS //
+            ECorrelator->Output(HeaderMessage,EOutputFile);
+            BCorrelator->Output(HeaderMessage,BOutputFile);
+
+            // CLEAN-UP //
+            delete ECorrelator; delete BCorrelator;
+            
+            // COMMANDLINE READOUT //
+            std::cerr << "#FINSIHED CORRELATORS CALCUALTIONS" << std::endl;
+        }
+        
+        // OVERLOAD //
+        void CorrelatorHistogram(std::string fname,INT nPoints){
+            
+            CorrelatorHistogram(fname,nPoints,GLinks::U,EFields::E);
+        
         }
         
     }
     
-
-
 }
-

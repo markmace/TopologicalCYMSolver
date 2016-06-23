@@ -42,6 +42,7 @@ typedef COMPLEX SU_Nc_FUNDAMENTAL_FORMAT;
 typedef DOUBLE SU_Nc_ADJOINT_FORMAT;
 
 #include "SU3/util/Diagonalization.cpp"
+#include "SU3/util/ComplexEigensystem.cpp"
 #include "SU3/GroupOperations.cpp"
 #include "SU3/AlgebraOperations.cpp"
 

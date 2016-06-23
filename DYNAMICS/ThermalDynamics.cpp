@@ -7,7 +7,7 @@ namespace ThermalDynamics{
     //   TEMPERATURE   //
     /////////////////////
     
-    DOUBLE beta=2.0; // 2.0 --> THIS IS BETA=8 IN GDM ????
+    DOUBLE beta=2.0; // --> MULTIPLE BY 2*Nc TO GET GDM VALUE
     
     //////////////
     //   TIME   //
@@ -20,11 +20,11 @@ namespace ThermalDynamics{
     INT tSteps=0;
     
     //TIME INCREMENT
-    static const DOUBLE dTau=0.05;
+    static const DOUBLE dTau=0.0375;
     
     //GET EVOLUTION TIME
     DOUBLE Time(){
-        return Qs*(tSteps*dTau);
+        return (tSteps*dTau);
     }
     
     ////////////////
@@ -260,8 +260,7 @@ namespace ThermalDynamics{
     void Thermalize(INT MaxSteps,DOUBLE MaxTime){
         
         std::ofstream EnergyOutStream;
-
-        EnergyOutStream.open(StringManipulation::StringCast(IO::OutputDirectory,"ThermalEnergy.txt").c_str());
+    EnergyOutStream.open(StringManipulation::StringCast(IO::OutputDirectory,"ThermalEnergy","ID",RandomNumberGenerator::MySEED,".txt").c_str());
     
         for(INT i=0;i<MaxSteps;i++){
             

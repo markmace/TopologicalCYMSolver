@@ -1,8 +1,8 @@
-namespace ChernSimonsNumber{
+namespace WindingNumber{
     
-    namespace IntegralEstimateMethod{
+    namespace IntegralEstimate{
         
-        DOUBLE NCS(INT xLow, INT xHigh, INT yLow, INT yHigh, INT zLow, INT zHigh,GaugeTransformations *G){
+        DOUBLE Measure(INT xLow, INT xHigh, INT yLow, INT yHigh, INT zLow, INT zHigh,GaugeTransformations *G){
             
             // PURE GAUGE FIELDS //
             SU_Nc_ALGEBRA_FORMAT AxM[SUNcAlgebra::VectorSize];
@@ -77,16 +77,16 @@ namespace ChernSimonsNumber{
             return ChernSimonsNumber;
         }
         
-        DOUBLE NCS(GaugeLinks *U,GaugeTransformations *G){
-            return NCS(0,U->N[0]-1,0,U->N[1]-1,0,U->N[2]-1,G);
+        DOUBLE Measure(GaugeLinks *U,GaugeTransformations *G){
+            return Measure(0,U->N[0]-1,0,U->N[1]-1,0,U->N[2]-1,G);
         }
         
-        DOUBLE NCS(GaugeTransformations *G){
-            return NCS(0,GLinks::U->N[0]-1,0,GLinks::U->N[1]-1,0,GLinks::U->N[2]-1,G);
+        DOUBLE Measure(GaugeTransformations *G){
+            return Measure(0,GLinks::U->N[0]-1,0,GLinks::U->N[1]-1,0,GLinks::U->N[2]-1,G);
         }
         
-        DOUBLE NCS(){
-            return NCS(GaugeTransformation::G);
+        DOUBLE Measure(){
+            return Measure(GaugeTransformation::G);
         }
         
     }

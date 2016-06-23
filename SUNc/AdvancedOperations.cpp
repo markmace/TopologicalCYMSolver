@@ -87,39 +87,7 @@ namespace SUNcGroup{
             SUNcGroup::Operations::UU(V1V2,V3,V1V2V3);
             
         }
-        void UUD(SU_Nc_FUNDAMENTAL_FORMAT *U1,SU_Nc_FUNDAMENTAL_FORMAT *U2,SU_Nc_FUNDAMENTAL_FORMAT *U3,SU_Nc_FUNDAMENTAL_FORMAT *Q){
-            
-            Q[0] = U1[0]*U2[0]*U3[0] + U1[1]*U2[1]*U3[0] + U1[2]*U2[2]*U3[0] - \
-            U1[3]*U2[3]*U3[0] - U1[1]*U2[0]*U3[1] + U1[0]*U2[1]*U3[1] - \
-            U1[3]*U2[2]*U3[1] - U1[2]*U2[3]*U3[1] - U1[2]*U2[0]*U3[2] + \
-            U1[3]*U2[1]*U3[2] + U1[0]*U2[2]*U3[2] + U1[1]*U2[3]*U3[2] + \
-            U1[3]*U2[0]*U3[3] + U1[2]*U2[1]*U3[3] - U1[1]*U2[2]*U3[3] + \
-            U1[0]*U2[3]*U3[3];
-            
-            Q[1] = U1[1]*U2[0]*U3[0] - U1[0]*U2[1]*U3[0] + U1[3]*U2[2]*U3[0] + \
-            U1[2]*U2[3]*U3[0] + U1[0]*U2[0]*U3[1] + U1[1]*U2[1]*U3[1] + \
-            U1[2]*U2[2]*U3[1] - U1[3]*U2[3]*U3[1] - U1[3]*U2[0]*U3[2] - \
-            U1[2]*U2[1]*U3[2] + U1[1]*U2[2]*U3[2] - U1[0]*U2[3]*U3[2] - \
-            U1[2]*U2[0]*U3[3] + U1[3]*U2[1]*U3[3] + U1[0]*U2[2]*U3[3] + \
-            U1[1]*U2[3]*U3[3];
-            
-            Q[2] = U1[2]*U2[0]*U3[0] - U1[3]*U2[1]*U3[0] - U1[0]*U2[2]*U3[0] - \
-            U1[1]*U2[3]*U3[0] + U1[3]*U2[0]*U3[1] + U1[2]*U2[1]*U3[1] - \
-            U1[1]*U2[2]*U3[1] + U1[0]*U2[3]*U3[1] + U1[0]*U2[0]*U3[2] + \
-            U1[1]*U2[1]*U3[2] + U1[2]*U2[2]*U3[2] - U1[3]*U2[3]*U3[2] + \
-            U1[1]*U2[0]*U3[3] - U1[0]*U2[1]*U3[3] + U1[3]*U2[2]*U3[3] + \
-            U1[2]*U2[3]*U3[3];
-            
-            
-            Q[3] = U1[3]*U2[0]*U3[0] + U1[2]*U2[1]*U3[0] - U1[1]*U2[2]*U3[0] + \
-            U1[0]*U2[3]*U3[0] - U1[2]*U2[0]*U3[1] + U1[3]*U2[1]*U3[1] + \
-            U1[0]*U2[2]*U3[1] + U1[1]*U2[3]*U3[1] + U1[1]*U2[0]*U3[2] - \
-            U1[0]*U2[1]*U3[2] + U1[3]*U2[2]*U3[2] + U1[2]*U2[3]*U3[2] - \
-            U1[0]*U2[0]*U3[3] - U1[1]*U2[1]*U3[3] - U1[2]*U2[2]*U3[3] + \
-            U1[3]*U2[3]*U3[3];
-            
-        }
-        /*
+        
         //V1.V2.V3D 
         void UUD(SU_Nc_FUNDAMENTAL_FORMAT *V1,SU_Nc_FUNDAMENTAL_FORMAT *V2,SU_Nc_FUNDAMENTAL_FORMAT *V3,SU_Nc_FUNDAMENTAL_FORMAT *V1V2V3D){
             
@@ -133,7 +101,7 @@ namespace SUNcGroup{
             SUNcGroup::Operations::UD(V1V2,V3,V1V2V3D);
             
         }
-        */
+        
         //V1.V2D.V3D
         void UDD(SU_Nc_FUNDAMENTAL_FORMAT *V1,SU_Nc_FUNDAMENTAL_FORMAT *V2,SU_Nc_FUNDAMENTAL_FORMAT *V3,SU_Nc_FUNDAMENTAL_FORMAT *V1V2DV3D){
             
@@ -429,6 +397,22 @@ namespace SUNcGroup{
             
         }
         
+        //V1D.V2.V3.V4D.V5D.V6
+        void DUUDDU(SU_Nc_FUNDAMENTAL_FORMAT *V1,SU_Nc_FUNDAMENTAL_FORMAT *V2,SU_Nc_FUNDAMENTAL_FORMAT *V3,SU_Nc_FUNDAMENTAL_FORMAT *V4,SU_Nc_FUNDAMENTAL_FORMAT *V5,SU_Nc_FUNDAMENTAL_FORMAT *V6,SU_Nc_FUNDAMENTAL_FORMAT *V1DV2V3V4DV5DV6){
+            
+            //CREATE BUFFERS
+            SU_Nc_FUNDAMENTAL_FORMAT V1DV2[SUNcGroup::MatrixSize]; SU_Nc_FUNDAMENTAL_FORMAT V5DV6[SUNcGroup::MatrixSize];SU_Nc_FUNDAMENTAL_FORMAT V1DV2V3[SUNcGroup::MatrixSize]; SU_Nc_FUNDAMENTAL_FORMAT V4DV5DV6[SUNcGroup::MatrixSize];
+            
+            //COMPUTE INDIVIDUAL PRODUCTS
+            SUNcGroup::Operations::DU(V1,V2,V1DV2); SUNcGroup::Operations::DU(V5,V6,V5DV6);
+            SUNcGroup::Operations::UU(V1DV2,V3,V1DV2V3); SUNcGroup::Operations::DU(V4,V5DV6,V4DV5DV6);
+            
+            
+            //COMPUTE FINAL RESULTS
+            SUNcGroup::Operations::UU(V1DV2V3,V4DV5DV6,V1DV2V3V4DV5DV6);
+            
+        }
+        
         //V1+V2+V3+V4
         void ReTrITaSum(SU_Nc_FUNDAMENTAL_FORMAT *V1,SU_Nc_FUNDAMENTAL_FORMAT *V2,SU_Nc_FUNDAMENTAL_FORMAT *V3,SU_Nc_FUNDAMENTAL_FORMAT *V4,DOUBLE *SumProjection){
             
@@ -444,23 +428,23 @@ namespace SUNcGroup{
             
         }
         
-        
-        // COMPUTE EMid= -i SUNcLog(UNew.UOldDagger) AND UMid=exp( i EMid/2) UOld //
-        void GeodesicInterpolation(SU_Nc_FUNDAMENTAL_FORMAT *UOld,SU_Nc_FUNDAMENTAL_FORMAT *UNew,SU_Nc_FUNDAMENTAL_FORMAT *UMid,SU_Nc_ALGEBRA_FORMAT *EMid){
+        // COMPUTE EMid= -i SUNcLog(UNew.UOldDagger) AND UMid=exp( i EMid*c) UOld //
+        void GeodesicInterpolation(DOUBLE c,SU_Nc_FUNDAMENTAL_FORMAT *UOld,SU_Nc_FUNDAMENTAL_FORMAT *UNew,SU_Nc_FUNDAMENTAL_FORMAT *UMid,SU_Nc_ALGEBRA_FORMAT *EMid){
             
             SU_Nc_FUNDAMENTAL_FORMAT Buffer[SUNcGroup::MatrixSize];
             
             SUNcGroup::Operations::UD(UNew,UOld,Buffer);
             SUNcAlgebra::Operations::MatrixILog(-DOUBLE(1.0),Buffer,EMid);
             
-            SUNcAlgebra::Operations::MatrixIExp(-DOUBLE(0.5),EMid,Buffer);
+            SUNcAlgebra::Operations::MatrixIExp(-DOUBLE(c),EMid,Buffer);
             SUNcGroup::Operations::UU(Buffer,UOld,UMid);
-                        
+            
         }
+    
         ////////////////////////
         // BLOCKED MATRIX SUM //
         ////////////////////////
-        
+        /*
         void BlockRGTypeIMatrixSum(const SU_Nc_FUNDAMENTAL_FORMAT *VLine,const SU_Nc_FUNDAMENTAL_FORMAT *VStapleUp1,const SU_Nc_FUNDAMENTAL_FORMAT *VStapleDown1,const SU_Nc_FUNDAMENTAL_FORMAT *VStapleUp2,const SU_Nc_FUNDAMENTAL_FORMAT *VStapleDown2, SU_Nc_FUNDAMENTAL_FORMAT *Sum){
             
             // CREATE SUM //
@@ -475,6 +459,7 @@ namespace SUNcGroup{
             
             
         }
+         */
     }
     
 }

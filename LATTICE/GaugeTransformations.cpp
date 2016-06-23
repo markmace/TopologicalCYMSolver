@@ -34,7 +34,7 @@ public:
     
     }
     
-    DOUBLE* Get(INT x,INT y,INT z){
+    SU_Nc_FUNDAMENTAL_FORMAT* Get(INT x,INT y,INT z){
         
         return &(G[Index(x,y,z)]);
     }

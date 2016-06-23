@@ -5,7 +5,7 @@
 #define SU_Nc_FLAG SU2_FLAG
 
 //INCLUDE SIMULATION PROCEDURE
-#include "SphaleronSimulation.cpp" // FOR RUNS
+#include "LangevinSimulation.cpp" // FOR RUNS
 
 // INCLUDE MPI SAMPLING //
 #include "MPI/Basic.cpp"
@@ -89,7 +89,7 @@ int main(int argc,char **argv){
     
         // FOR LOADING FILES
         INT InputFileTime=0;
-        INT InputFileID=1457991876;
+        INT InputFileID=1454616320;
     
         arguments.Getval("iT",InputFileTime);
         arguments.Getval("iID",InputFileID);
@@ -126,10 +126,17 @@ int main(int argc,char **argv){
     // GET SIMULATION PARAMETERS //
     ///////////////////////////////
     
-    arguments.Getval("Qs",Qs);
-    arguments.Getval("n0",n0);
+    DOUBLE InvTemp=-1;
+
+    arguments.Getval("beta",InvTemp);
     
-    std::cerr << "#Qs=" << Qs << " n0=" << n0 << std::endl;
+    if(InvTemp>0.0){
+        
+        LangevinDynamics::beta=InvTemp;
+
+        std::cerr << "#beta=" << LangevinDynamics::beta << std::endl;
+        
+    }
     
     //////////////
     // SIMULATE //

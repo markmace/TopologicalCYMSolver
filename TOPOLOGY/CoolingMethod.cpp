@@ -4,7 +4,7 @@ namespace ChernSimonsNumber{
         
         INT StandardBlockingLevel; INT CalibrationBlockingLevel;
         
-        DOUBLE StandardCoolingDepth; DOUBLE CalibrationCoolingDepth;
+        INT StandardCoolingMaxSteps; INT CalibrationCoolingMaxSteps;
         
         //////////////////////////////////////
         // COOLED GAUGE LINK CONFIGURATIONS //
@@ -34,7 +34,7 @@ namespace ChernSimonsNumber{
         ////////////////////////////
         
         
-        void PerformInterpolation(INT xLow,INT xHigh,INT yLow,INT yHigh,INT zLow,INT zHigh){
+        void PerformInterpolation(DOUBLE c,INT xLow,INT xHigh,INT yLow,INT yHigh,INT zLow,INT zHigh){
             
             DOUBLE cE[Lattice::Dimension];
             
@@ -52,7 +52,7 @@ namespace ChernSimonsNumber{
                         for(INT mu=0;mu<Lattice::Dimension;mu++){
                             
                             // GET VALUES //
-                            SUNcGroup::AdvancedOperations::GeodesicInterpolation(UOld->Get(x,y,z,mu),UNew->Get(x,y,z,mu),UMid->Get(x,y,z,mu),EMid->Get(x,y,z,mu,0));
+                            SUNcGroup::AdvancedOperations::GeodesicInterpolation(c,UOld->Get(x,y,z,mu),UNew->Get(x,y,z,mu),UMid->Get(x,y,z,mu),EMid->Get(x,y,z,mu,0));
                             
                             // CONVERT TO STANDARD UNITS //
                             for(INT a=0;a<SUNcAlgebra::VectorSize;a++){
@@ -67,21 +67,58 @@ namespace ChernSimonsNumber{
             
         }
         
-        void PerformInterpolation(){
+        void PerformInterpolation(DOUBLE c){
             
-            PerformInterpolation(0,UNew->N[0]-1,0,UNew->N[1]-1,0,UNew->N[2]-1);
+            PerformInterpolation(c,0,UNew->N[0]-1,0,UNew->N[1]-1,0,UNew->N[2]-1);
         }
         
         ///////////////////////////////////////
         // PERFORM CHERNS SIMONS MEASUREMENT //
         ///////////////////////////////////////
         
-        DOUBLE GetDeltaNCs(){
+        // IMPROVED SIMPSONS RULE
+        DOUBLE GetDeltaNCs(INT NOrder){
             
-            return (NCsDot(UOld,EMid)+DOUBLE(4.0)*NCsDot(UMid,EMid)+NCsDot(UNew,EMid))/DOUBLE(6.0); //SIMPSONS RULE
+            // RESET //
+            DOUBLE Value=0.0;
+            
+            // DETERMINE SPACING //
+            DOUBLE xSpacing=1.0/DOUBLE(2.0*NOrder);
+            
+            // GLOBAL WEIGHT //
+            DOUBLE GlobalWeight=0.0;
+            
+            // COMPUTE CONTRIBUTIONS FROM INTERPOLATED POINTS //
+            for(INT ip=1;ip<2*NOrder;ip++){
+                
+                // GET x VALUE //
+                DOUBLE xVal=ip*xSpacing;
+                
+                // GET SIMPSON WEIGHT //
+                DOUBLE Weight=2.0+2.0*MOD(ip,2);
+                
+                // PERFORM INTERPOLATION //
+                PerformInterpolation(xVal);
+                
+                // ADD CONTRIBUTION //
+                Value+=Weight*NCsDot(UMid,EMid); GlobalWeight+=Weight;
+                
+            }
+            
+            // COMPUTE EMid IF NECESSARY //
+            if(NOrder==0){
+                PerformInterpolation(0.5);
+            }
+            
+            // COMPUTE LEFT END-POINT CONTRIBUTION //
+            Value+=NCsDot(UOld,EMid); GlobalWeight+=1.0;
+            
+            // COMPUTE RIGHT END-POINT CONTRIBUTION //
+            Value+=NCsDot(UNew,EMid);   GlobalWeight+=1.0;
+                        
+            return  Value/GlobalWeight;
             
         }
-        
         
         //////////////////////////////////
         //  START COOLING METHOD        //
@@ -89,8 +126,11 @@ namespace ChernSimonsNumber{
         
         void Start(){
             
+            // COMMANDLINE OUTPUT //
+            std::cerr << "#BEGINNING INITIAL COOLING AT T=" << Dynamics::Time() << std::endl;
+            
             // PERFORM COOLING //
-            Cooling::CoolNSave(StringManipulation::StringCast("CoolingT",Dynamics::Time()).c_str(),StandardCoolingDepth,StandardBlockingLevel,GLinks::U,UNew);
+            Cooling::CoolNSave(StringManipulation::StringCast("CoolingT",Dynamics::Time()).c_str(),StandardCoolingMaxSteps,StandardBlockingLevel,GLinks::U,UNew);
             
             // COPY NEW TO OLD //
             Copy(UOld,UNew);
@@ -102,24 +142,21 @@ namespace ChernSimonsNumber{
         
         void Update(INT Measure){
             
-            
             // COMMANDLINE OUTPUT //
-            std::cerr << "#COOLING AT T=" << Dynamics::Time() << std::endl;
+            //std::cerr << "#COOLING AT T=" << Dynamics::Time() << std::endl;
             
             // RESET CHERN SIMONS NUMBER MONITORING //
             ChernSimonsNumber::DeltaNCsCooling=DOUBLE(0.0);
             
             // PERFORM COOLING //
-            Cooling::CoolNSave(StringManipulation::StringCast("CoolingT",Dynamics::Time()).c_str(),StandardCoolingDepth,StandardBlockingLevel,GLinks::U,UNew);
+            Cooling::CoolNSave(StringManipulation::StringCast("CoolingT",Dynamics::Time()).c_str(),StandardCoolingMaxSteps,StandardBlockingLevel,GLinks::U,UNew);
 
             // MEASURE DELTA NCS ALONG COOLING PATH //
             if(Measure==1){
                 
-                // PERFORM INTERPOLATION //
-                PerformInterpolation();
-
                 // COMPUTE DIFFERNCE IN CHERN SIMONS NUMBER //
-                ChernSimonsNumber::DeltaNCsCoolRealTime+=GetDeltaNCs();
+                ChernSimonsNumber::DeltaNCsCoolRealTime+=GetDeltaNCs(1);
+
             }
 
             // COPY NEW TO OLD //
@@ -134,21 +171,25 @@ namespace ChernSimonsNumber{
         void Calibrate(){
             
             // COMMANDLINE OUTPUT //
-            std::cerr << "#CALIBRATING COOLING AT T=" << Dynamics::Time() << std::endl;
+            std::cerr << "#CALIBRATING COOLING AT T=" << Dynamics::Time() << " Tc=" << GradientFlow::CoolingTime() << std::endl;
+        
             
             // RESET CHERN SIMONS NUMBER MONITORING //
             ChernSimonsNumber::DeltaNCsCooling=DOUBLE(0.0);
             
-            Cooling::ContinueCooling(StringManipulation::StringCast("VacuumCoolingT",Dynamics::Time()).c_str(),CalibrationCoolingDepth,CalibrationBlockingLevel,UNew);
-            
-            std::cerr << ChernSimonsNumber::DeltaNCsCooling-ChernSimonsNumber::DeltaNCsPreviousCooling << " " << ChernSimonsNumber::DeltaNCsCoolRealTime << std::endl;
-            
-            // CALIBRATE NCS MEASUREMENT //
-            ChernSimonsNumber::DeltaNCsCoolRealTime=ChernSimonsNumber::DeltaNCsCooling;
-            
-            
-            ChernSimonsNumber::DeltaNCsPreviousCooling=ChernSimonsNumber::DeltaNCsCooling;
+            // SAVE PREVIOUS CALIBRATION MEASUREMENTS //
+            ChernSimonsNumber::DeltaNCsPreviousCalibration=ChernSimonsNumber::DeltaNCsCalibration;
+            ChernSimonsNumber::DeltaNCsRealTimePreviousCalibration=ChernSimonsNumber::DeltaNCsRealTimeCalibration;
 
+            // CALIBRATE BY COOLING TO VACUUM //
+            Cooling::ContinueCooling(StringManipulation::StringCast("VacuumCoolingT",Dynamics::Time()).c_str(),StandardCoolingMaxSteps+CalibrationCoolingMaxSteps,CalibrationBlockingLevel,UNew);
+            
+            // SAVE DELTA NCS ALONG CALIBRATION PATH //
+            ChernSimonsNumber::DeltaNCsCalibration=ChernSimonsNumber::DeltaNCsCooling;
+            
+            // SAVE DELTA NCS ALONG ORIGINAL COOLED REAL-TIME PATH //
+            ChernSimonsNumber::DeltaNCsRealTimeCalibration=ChernSimonsNumber::DeltaNCsCoolRealTime;
+            
             // COMMANDLINE OUTPUT //
             std::cerr << "#CALIBRATION COMPLETED" << std::endl;
 

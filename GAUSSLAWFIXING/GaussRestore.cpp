@@ -10,7 +10,6 @@ namespace GaussLawRestoration{
     DOUBLE GlobalMaxViolation; 
     DOUBLE GlobalAvgViolation;
     
-    
     void UpdateDeviation(INT xLow,INT xHigh,INT yLow,INT yHigh,INT zLow,INT zHigh,GaugeLinks *U,ElectricFields *E){
         
         
@@ -25,8 +24,10 @@ namespace GaussLawRestoration{
         {
             
             //ALLOCATE BUFFERS
-            SET_ADJOINT_BUFFERS();
+            SET_GAUSS_LAW_BUFFERS();
             
+            //LOCAL VIOLATION
+            DOUBLE LocalViolation[SUNcAlgebra::VectorSize];
             
             // UPDATE ELECTRIC FIELDS //
             #pragma omp for reduction( + : SqrSumViolation) reduction( max : MaxViolation)
@@ -35,13 +36,12 @@ namespace GaussLawRestoration{
                     for(INT x=xLow;x<=xHigh;x++){
                         
                         // GET LOCAL VIOLATION //
-                        COMPUTE_NEIGHBORING_ADJOINTS(x,y,z);
+                        COMPUTE_GAUSS_VIOLATION(LocalViolation,x,y,z);
                         
                         // COMPUTEVALL COMPONENTS //
                         for(INT a=0;a<SUNcAlgebra::VectorSize;a++){
                             
-                            // WRITE TO ARRAY //
-                            COMPUTE_GAUSS_VIOLATION(GaussViolation[GaussViolationIndex(x,y,z,a)],x,y,z,a);
+                            GaussViolation[GaussViolationIndex(x,y,z,a)]=LocalViolation[a];
                             
                             //UPDATE MAXIMUM
                             MaxViolation=std::max(MaxViolation,GaussViolation[GaussViolationIndex(x,y,z,a)]);
@@ -72,14 +72,13 @@ namespace GaussLawRestoration{
     // UPDATE ELECTRIC FIELDS //
     void UpdateElectricFields(INT xLow,INT xHigh,INT yLow,INT yHigh,INT zLow,INT zHigh,GaugeLinks *U,ElectricFields *E,DOUBLE Gamma){
         
-        
         #pragma omp parallel
         {
             
             //ALLOCATE BUFFERS
-            SU_Nc_ADJOINT_FORMAT U0Adj[SUNcAlgebra::VectorSize*SUNcAlgebra::VectorSize];
-            SU_Nc_ADJOINT_FORMAT U1Adj[SUNcAlgebra::VectorSize*SUNcAlgebra::VectorSize];
-            SU_Nc_ADJOINT_FORMAT U2Adj[SUNcAlgebra::VectorSize*SUNcAlgebra::VectorSize];
+            SU_Nc_ALGEBRA_FORMAT GaussXUp[SUNcAlgebra::VectorSize];
+            SU_Nc_ALGEBRA_FORMAT GaussYUp[SUNcAlgebra::VectorSize];
+            SU_Nc_ALGEBRA_FORMAT GaussZUp[SUNcAlgebra::VectorSize];
             
             // UPDATE ELECTRIC FIELDS //
             #pragma omp for
@@ -87,21 +86,17 @@ namespace GaussLawRestoration{
                 for(INT y=yLow;y<=yHigh;y++){
                     for(INT x=xLow;x<=xHigh;x++){
                         
-                        // GET ADJOINTS //
-                        SUNcGroup::Operations::GetAdjoint(U->Get(x,y,z,0),U0Adj);
-                        SUNcGroup::Operations::GetAdjoint(U->Get(x,y,z,1),U1Adj);
-                        SUNcGroup::Operations::GetAdjoint(U->Get(x,y,z,2),U2Adj);
+                        // GET TRANSPORTED UPPER VALUES //
+                        SUNcAlgebra::Operations::AdjointMultiplication(U->Get(x,y,z,0),&GaussViolation[GaussViolationIndex(x+1,y,z,0)],GaussXUp);
+                        SUNcAlgebra::Operations::AdjointMultiplication(U->Get(x,y,z,1),&GaussViolation[GaussViolationIndex(x,y+1,z,0)],GaussYUp);
+                        SUNcAlgebra::Operations::AdjointMultiplication(U->Get(x,y,z,2),&GaussViolation[GaussViolationIndex(x,y,z+1,0)],GaussZUp);
                         
                         // UPDATE ELECTRIC FIELDS //
                         for(INT a=0;a<SUNcAlgebra::VectorSize;a++){
-                            
-                            for(INT b=0;b<SUNcAlgebra::VectorSize;b++){
-                                
-                                E->Get(x,y,z,0,a)[0]-=Gamma*(DELTA(a,b)*GaussViolation[GaussViolationIndex(x,y,z,b)]-U0Adj[SUNcGroup::AdjIndex(a,b)]*GaussViolation[GaussViolationIndex(x+1,y,z,b)]);
-                                E->Get(x,y,z,1,a)[0]-=Gamma*(DELTA(a,b)*GaussViolation[GaussViolationIndex(x,y,z,b)]-U1Adj[SUNcGroup::AdjIndex(a,b)]*GaussViolation[GaussViolationIndex(x,y+1,z,b)]);
-                                E->Get(x,y,z,2,a)[0]-=Gamma*(DELTA(a,b)*GaussViolation[GaussViolationIndex(x,y,z,b)]-U2Adj[SUNcGroup::AdjIndex(a,b)]*GaussViolation[GaussViolationIndex(x,y,z+1,b)]);
-                                
-                            }
+
+                                E->Get(x,y,z,0,a)[0]-=Gamma*(GaussViolation[GaussViolationIndex(x,y,z,a)]-GaussXUp[a]);
+                                E->Get(x,y,z,1,a)[0]-=Gamma*(GaussViolation[GaussViolationIndex(x,y,z,a)]-GaussYUp[a]);
+                                E->Get(x,y,z,2,a)[0]-=Gamma*(GaussViolation[GaussViolationIndex(x,y,z,a)]-GaussZUp[a]);
                             
                         }
                         
@@ -110,10 +105,9 @@ namespace GaussLawRestoration{
                     
                 }
             }
-        
+            
             
         } // END PARALLEL
-
         
         
     }
@@ -146,6 +140,11 @@ namespace GaussLawRestoration{
         GlobalMaxViolation=1;
         
         std::cerr << "#GAUSS LAW FIXING" << std::endl;
+        
+        // CHECK INITIAL DEVIATION //
+        UpdateDeviation(U,E);
+    
+        std::cerr << nSteps << " " << GlobalMaxViolation << " " << GlobalAvgViolation << std::endl;
         
         // ITERATIVE UPDATE //
         while(nSteps<10000 && GlobalMaxViolation>std::pow(10.0,-MAX_DIGITS_PRECISION+1)){

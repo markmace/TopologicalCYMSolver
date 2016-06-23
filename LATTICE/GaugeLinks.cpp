@@ -41,7 +41,7 @@ public:
         
     }
     
-    DOUBLE* Get(INT x,INT y,INT z,INT mu){
+    SU_Nc_FUNDAMENTAL_FORMAT* Get(INT x,INT y,INT z,INT mu){
         
         return &(U[Index(x,y,z,mu)]);
     }
@@ -148,71 +148,5 @@ void Block(GaugeLinks **UOld){
     *UOld=UNew;
     
 }
-void CopyWithRGBlock(GaugeLinks **UOld,GaugeLinks *UNew){
-    
-
-    // COMPUTE BLOCKED GAUGE LINKS //
-    for(INT z=0;z<=UNew->N[2]-1;z++){
-        for(INT y=0;y<=UNew->N[1]-1;y++){
-            for(INT x=0;x<=UNew->N[0]-1;x++){
-                
-                //BUFFERS
-                SU_Nc_FUNDAMENTAL_FORMAT UxxP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UyyP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UzzP[SUNcGroup::MatrixSize];
-                
-                SU_Nc_FUNDAMENTAL_FORMAT UzxP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UzxM[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UyxP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UyxM[SUNcGroup::MatrixSize];
-                
-                SU_Nc_FUNDAMENTAL_FORMAT UxyP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UxyM[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UzyP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UzyM[SUNcGroup::MatrixSize];
-                
-                SU_Nc_FUNDAMENTAL_FORMAT UyzP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UyzM[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UxzP[SUNcGroup::MatrixSize];
-                SU_Nc_FUNDAMENTAL_FORMAT UxzM[SUNcGroup::MatrixSize];
-                
-                //SMEARED LINKS FOR BLOCKING
-                SUNcGroup::Operations::UU((*UOld)->Get(2*x,2*y,2*z,0),(*UOld)->Get(2*x+1,2*y,2*z,0),UxxP);
-                SUNcGroup::Operations::UU((*UOld)->Get(2*x,2*y,2*z,1),(*UOld)->Get(2*x,2*y+1,2*z,1),UyyP);
-                SUNcGroup::Operations::UU((*UOld)->Get(2*x,2*y,2*z,2),(*UOld)->Get(2*x,2*y,2*z+1,2),UzzP);
-                
-                SUNcGroup::AdvancedOperations::UUUD((*UOld)->Get(2*x,2*y,2*z,2),(*UOld)->Get(2*x,2*y,2*z+1,0),(*UOld)->Get(2*x+1,2*y,2*z+1,0),(*UOld)->Get(2*x+2,2*y,2*z,2),UzxP);
-                SUNcGroup::AdvancedOperations::UUUD((*UOld)->Get(2*x,2*y,2*z,0),(*UOld)->Get(2*x+1,2*y,2*z,1),(*UOld)->Get(2*x+1,2*y+1,2*z,1),(*UOld)->Get(2*x,2*y+2,2*z,0),UxyP);
-                SUNcGroup::AdvancedOperations::UUUD((*UOld)->Get(2*x,2*y,2*z,1),(*UOld)->Get(2*x,2*y+1,2*z,2),(*UOld)->Get(2*x,2*y+1,2*z+1,2),(*UOld)->Get(2*x,2*y,2*z+2,1),UyzP);
-                
-                SUNcGroup::AdvancedOperations::UUUD((*UOld)->Get(2*x,2*y,2*z,1),(*UOld)->Get(2*x,2*y+1,2*z,0),(*UOld)->Get(2*x+1,2*y+1,2*z,0),(*UOld)->Get(2*x+2,2*y,2*z,1),UyxP);
-                SUNcGroup::AdvancedOperations::UUUD((*UOld)->Get(2*x,2*y,2*z,2),(*UOld)->Get(2*x,2*y,2*z+1,1),(*UOld)->Get(2*x,2*y+1,2*z+1,1),(*UOld)->Get(2*x,2*y+2,2*z,2),UzyP);
-                SUNcGroup::AdvancedOperations::UUUD((*UOld)->Get(2*x,2*y,2*z,0),(*UOld)->Get(2*x+1,2*y,2*z,2),(*UOld)->Get(2*x+1,2*y,2*z+1,2),(*UOld)->Get(2*x,2*y,2*z+2,0),UxzP);
-                
-                SUNcGroup::AdvancedOperations::DUUU((*UOld)->Get(2*x,2*y,2*z-1,2),(*UOld)->Get(2*x,2*y,2*z-1,0),(*UOld)->Get(2*x+1,2*y,2*z-1,0),(*UOld)->Get(2*x+2,2*y,2*z-1,2),UzxM);
-                SUNcGroup::AdvancedOperations::DUUU((*UOld)->Get(2*x-1,2*y,2*z,0),(*UOld)->Get(2*x-1,2*y,2*z,1),(*UOld)->Get(2*x-1,2*y+1,2*z,1),(*UOld)->Get(2*x-1,2*y+2,2*z,0),UxyM);
-                SUNcGroup::AdvancedOperations::DUUU((*UOld)->Get(2*x,2*y-1,2*z,1),(*UOld)->Get(2*x,2*y-1,2*z,2),(*UOld)->Get(2*x,2*y-1,2*z+1,2),(*UOld)->Get(2*x,2*y-1,2*z+2,1),UyzM);
-                
-                SUNcGroup::AdvancedOperations::DUUU((*UOld)->Get(2*x,2*y-1,2*z,1),(*UOld)->Get(2*x,2*y-1,2*z,0),(*UOld)->Get(2*x+1,2*y-1,2*z,0),(*UOld)->Get(2*x+2,2*y-1,2*z,1),UyxM);
-                SUNcGroup::AdvancedOperations::DUUU((*UOld)->Get(2*x,2*y,2*z-1,2),(*UOld)->Get(2*x,2*y,2*z-1,1),(*UOld)->Get(2*x,2*y+1,2*z-1,1),(*UOld)->Get(2*x,2*y+2,2*z-1,2),UzyM);
-                SUNcGroup::AdvancedOperations::DUUU((*UOld)->Get(2*x-1,2*y,2*z,0),(*UOld)->Get(2*x-1,2*y,2*z,2),(*UOld)->Get(2*x-1,2*y,2*z+1,2),(*UOld)->Get(2*x-1,2*y,2*z+2,0),UxzM);
-                
-                //RECONSTRUCT BLOCKED LINKS
-                SUNcGroup::AdvancedOperations::BlockRGTypeIMatrixSum(UxxP,UzxP,UzxM,UyxP,UyxM,UNew->Get(x,y,z,0));
-                SUNcGroup::AdvancedOperations::BlockRGTypeIMatrixSum(UyyP,UxyP,UxyM,UzyP,UzyM,UNew->Get(x,y,z,1));
-                SUNcGroup::AdvancedOperations::BlockRGTypeIMatrixSum(UzzP,UyzP,UyzM,UxzP,UxzM,UNew->Get(x,y,z,2));
-                
-                // RE-UNITARIZE //
-                SUNcGroup::Extended::MaxTraceProjection(UNew->Get(x,y,z,0));
-                SUNcGroup::Extended::MaxTraceProjection(UNew->Get(x,y,z,1));
-                SUNcGroup::Extended::MaxTraceProjection(UNew->Get(x,y,z,2));
-                
-                
-            }
-        }
-    }
-    
-}
-
 
 #endif
